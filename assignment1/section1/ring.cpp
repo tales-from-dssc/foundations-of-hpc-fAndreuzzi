@@ -3,14 +3,16 @@
 #include <mpi.h>
 
 #define TAG_MULTIPLIER 10
-#define ASYNC 1
+#define ASYNC 0
 #define DEBUG 1
 
 // updates the content of buffer (which is expected to contain four integers)
 // according to the statement of the assignment
 void update_send_buffer(int *buffer, int rank) {
-  buffer[1] = buffer[3] + rank;
-  buffer[0] = buffer[2] - rank;
+  // if async is true, the buffer is 4 bytes long
+  // and we keep separate variables for sent and received variables
+  buffer[1] = buffer[ASYNC * 2 + 1] + rank;
+  buffer[0] = buffer[ASYNC * 2] - rank;
 }
 
 int main(int argc, char **argv) {
@@ -65,9 +67,25 @@ int main(int argc, char **argv) {
   } while (buffer[1] != expected_send || buffer[0] != -expected_send);
 
   std::cout << "Process " << rank << " finished!" << std::endl;
+#else // SYNC
+  int buffer[] = {rank, -rank};
+  MPI_Status status;
 
-#else
+  do {
+    MPI_Send(&buffer[0], 1, MPI_INT, left, tag, MPI_COMM_WORLD);
+    MPI_Recv(&buffer[0], 1, MPI_INT, right, right_tag, MPI_COMM_WORLD, &status);
+    MPI_Send(&buffer[1], 1, MPI_INT, right, tag, MPI_COMM_WORLD);
+    MPI_Recv(&buffer[1], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD, &status);
+#if DEBUG
+    std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
+              << buffer[2] << " --- SENT: " << buffer[0] << ", " << buffer[1]
+              << std::endl;
+#endif
 
+    update_send_buffer(buffer, rank);
+  } while (buffer[1] != expected_send || buffer[0] != -expected_send);
+
+  std::cout << "Process " << rank << " finished!" << std::endl;
 #endif
 
   MPI_Finalize();
