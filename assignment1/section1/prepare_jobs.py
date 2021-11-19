@@ -2,6 +2,11 @@ import sys
 
 n_max = int(sys.argv[1])
 
+async = int(sys.argv[2])
+async_flag = ''
+if async == 1:
+	async_flag = '-D async'
+
 template = """
 #!/bin/bash
 ### Job Name
@@ -21,6 +26,8 @@ cd /u/dssc/fandreuz/HPC/assignment1
 
 module load openmpi/4.0.3/gnu/9.3.0
 
+mpic++ {} ring.cpp
+
 ### Run the executable
 for n in {{2..1000}};
 do mpirun -np {} a.out && echo "T# STOP";
@@ -29,5 +36,5 @@ done;
 
 for i in range(2,n_max+1):
 	text_file = open("ring{}.pbs".format(i), "w")
-	text_file.write(template.format(i,i,i,i))
+	text_file.write(template.format(i,i,i,async_flag,i))
 	text_file.close()
