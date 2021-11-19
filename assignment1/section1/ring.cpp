@@ -3,7 +3,13 @@
 #include <mpi.h>
 
 #define TAG_MULTIPLIER 10
+
+#ifdef async
+#define ASYNC 1
+#else
 #define ASYNC 0
+#endif
+
 #define DEBUG 1
 
 // updates the content of buffer (which is expected to contain four integers)
