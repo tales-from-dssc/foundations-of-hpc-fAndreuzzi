@@ -27,6 +27,8 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  double start_time = MPI_Wtime();
+
   // the tag of all the messages sent by this process
   const int tag = rank * TAG_MULTIPLIER;
 
@@ -105,6 +107,8 @@ int main(int argc, char **argv) {
   std::cout << "I am process " << rank << " and i have received " << msg_count
             << " messages. My final messages have tag " << tag << " and value "
             << last_msg_left << ", " << last_msg_right << std::endl;
+
+  std::cout << "T# " << MPI_Wtime() - start_time << std::endl;
 
   MPI_Finalize();
 }
