@@ -10,8 +10,6 @@
 #define ASYNC 0
 #endif
 
-#define DEBUG 1
-
 // updates the content of buffer (which is expected to contain four integers)
 // according to the statement of the assignment
 void update_send_buffer(int *buffer, int rank) {
@@ -47,7 +45,7 @@ int main(int argc, char **argv) {
   int msg_count = 0;
   int last_msg_left, last_msg_right = 0;
 
-#if DEBUG
+#ifdef DEBUG
   std::cout << "Process " << rank << " objective: " << expected_send
             << std::endl;
 #endif
@@ -70,7 +68,7 @@ int main(int argc, char **argv) {
     MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
     ++msg_count;
 
-#if DEBUG
+#ifdef DEBUG
     std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
               << buffer[2] << " --- SENT: " << buffer[0] << ", " << buffer[1]
               << std::endl;
@@ -94,7 +92,7 @@ int main(int argc, char **argv) {
     MPI_Recv(&buffer[1], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD, &status);
     ++msg_count;
 
-#if DEBUG
+#ifdef DEBUG
     std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
               << buffer[2] << " --- SENT: " << buffer[0] << ", " << buffer[1]
               << std::endl;
