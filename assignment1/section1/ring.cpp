@@ -35,6 +35,10 @@ int main(int argc, char **argv) {
   const int left_tag = TAG_MULTIPLIER * left;
 
   const int expected_send = size * (size - 1) / 2 - rank;
+
+  int msg_count = 0;
+  int last_msg_left, last_msg_right = 0;
+
 #if DEBUG
   std::cout << "Process " << rank << " objective: " << expected_send
             << std::endl;
@@ -56,6 +60,7 @@ int main(int argc, char **argv) {
     MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD,
               &requests[3]);
     MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
+    ++msg_count;
 
 #if DEBUG
     std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
@@ -66,16 +71,21 @@ int main(int argc, char **argv) {
     update_send_buffer(buffer, rank);
   } while (buffer[1] != expected_send || buffer[0] != -expected_send);
 
-  std::cout << "Process " << rank << " finished!" << std::endl;
+  last_msg_left = buffer[1];
+  last_msg_right = buffer[0];
 #else // SYNC
   int buffer[] = {rank, -rank};
   MPI_Status status;
 
   do {
     MPI_Send(&buffer[0], 1, MPI_INT, left, tag, MPI_COMM_WORLD);
+    last_msg_left = buffer[0];
     MPI_Recv(&buffer[0], 1, MPI_INT, right, right_tag, MPI_COMM_WORLD, &status);
     MPI_Send(&buffer[1], 1, MPI_INT, right, tag, MPI_COMM_WORLD);
+    last_msg_right = buffer[1];
     MPI_Recv(&buffer[1], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD, &status);
+    ++msg_count;
+
 #if DEBUG
     std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
               << buffer[2] << " --- SENT: " << buffer[0] << ", " << buffer[1]
@@ -84,9 +94,11 @@ int main(int argc, char **argv) {
 
     update_send_buffer(buffer, rank);
   } while (buffer[1] != expected_send || buffer[0] != -expected_send);
-
-  std::cout << "Process " << rank << " finished!" << std::endl;
 #endif
+
+  std::cout << "I am process " << rank << " and i have received " << msg_count
+            << " messages. My final messages have tag " << tag << " and value "
+            << last_msg_left << ", " << last_msg_right << std::endl;
 
   MPI_Finalize();
 }
