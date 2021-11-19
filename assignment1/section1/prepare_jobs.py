@@ -12,7 +12,7 @@ template = """
 ### Job Name
 #PBS -N ring
 ### Project code
-#PBS -l walltime=01:00:00
+#PBS -l walltime=00:30:00
 #PBS -q dssc
 ### Merge output and error files
 #PBS -o /u/dssc/fandreuz/HPC/assignment1/ring{}.txt
