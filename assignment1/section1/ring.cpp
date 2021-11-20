@@ -4,19 +4,13 @@
 
 #define TAG_MULTIPLIER 10
 
-#ifdef async
-#define ASYNC 1
-#else
-#define ASYNC 0
-#endif
-
 // updates the content of buffer (which is expected to contain four integers)
 // according to the statement of the assignment
 void update_send_buffer(int *buffer, int rank) {
   // if async is true, the buffer is 4 bytes long
   // and we keep separate variables for sent and received variables
-  buffer[1] = buffer[ASYNC * 2 + 1] + rank;
-  buffer[0] = buffer[ASYNC * 2] - rank;
+  buffer[1] = buffer[3] + rank;
+  buffer[0] = buffer[2] - rank;
 }
 
 int main(int argc, char **argv) {
@@ -50,7 +44,6 @@ int main(int argc, char **argv) {
             << std::endl;
 #endif
 
-#if ASYNC
   // 0: send left
   // 1: send right
   // 2: received from right
@@ -66,7 +59,8 @@ int main(int argc, char **argv) {
     MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD,
               &requests[3]);
     MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
-    ++msg_count;
+
+    msg_count += 2;
 
 #ifdef DEBUG
     std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
@@ -76,36 +70,14 @@ int main(int argc, char **argv) {
 
     update_send_buffer(buffer, rank);
   } while (buffer[1] != expected_send || buffer[0] != -expected_send);
-
-  last_msg_left = buffer[1];
-  last_msg_right = buffer[0];
-#else // SYNC
-  int buffer[] = {rank, -rank};
-  MPI_Status status;
-
-  do {
-    MPI_Send(&buffer[0], 1, MPI_INT, left, tag, MPI_COMM_WORLD);
-    last_msg_left = buffer[0];
-    MPI_Recv(&buffer[0], 1, MPI_INT, right, right_tag, MPI_COMM_WORLD, &status);
-    MPI_Send(&buffer[1], 1, MPI_INT, right, tag, MPI_COMM_WORLD);
-    last_msg_right = buffer[1];
-    MPI_Recv(&buffer[1], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD, &status);
-    ++msg_count;
-
-#ifdef DEBUG
-    std::cout << "Process " << rank << " RECEIVED: " << buffer[3] << ", "
-              << buffer[2] << " --- SENT: " << buffer[0] << ", " << buffer[1]
-              << std::endl;
-#endif
-
-    update_send_buffer(buffer, rank);
-  } while (buffer[1] != expected_send || buffer[0] != -expected_send);
-#endif
 
   std::cout << "I am process " << rank << " and i have received " << msg_count
             << " messages. My final messages have tag " << tag << " and value "
-            << last_msg_left << ", " << last_msg_right << std::endl;
+            << buffer[3] << ", " << buffer[2] << std::endl;
 
+#ifdef MAIN_ONLY
+if (rank == 0)
+#endif
   std::cout << "T# " << MPI_Wtime() - start_time << std::endl;
 
   MPI_Finalize();
