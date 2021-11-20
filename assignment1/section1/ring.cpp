@@ -78,7 +78,8 @@ int main(int argc, char **argv) {
 #ifdef MAIN_ONLY
     if (rank == 0)
 #endif
-      if (it >= INITIAL_SKIP) std::cout << "T# " << MPI_Wtime() - start_time << std::endl;
+      if (it >= INITIAL_SKIP)
+        std::cout << "T# " << MPI_Wtime() - start_time << std::endl;
 
 #ifndef TIME_ONLY
     std::cout << "I am process " << rank << " and i have received " << msg_count
