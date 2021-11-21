@@ -16,18 +16,21 @@ void update_send_buffer(int *buffer, int rank) {
 }
 
 int main(int argc, char **argv) {
-  int rank, size;
   MPI_Init(&argc, &argv);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  // the tag of all the messages sent by this process
-  const int tag = rank * TAG_MULTIPLIER;
+  int size;
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int periodic = 1;
   MPI_Comm cartesian_communicator;
   MPI_Cart_create(MPI_COMM_WORLD, 1, &size, &periodic, 0,
                   &cartesian_communicator);
+
+  int rank;
+  MPI_Comm_rank(cartesian_communicator, &rank);
+
+  // the tag of all the messages sent by this process
+  const int tag = rank * TAG_MULTIPLIER;
 
   int left, right;
   MPI_Cart_shift(cartesian_communicator, 0, 1, &left, &right);
@@ -54,13 +57,13 @@ int main(int argc, char **argv) {
     double start_time = MPI_Wtime();
 
     do {
-      MPI_Isend(&buffer[0], 1, MPI_INT, left, tag, MPI_COMM_WORLD,
+      MPI_Isend(&buffer[0], 1, MPI_INT, left, tag, cartesian_communicator,
                 &requests[0]);
-      MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag, MPI_COMM_WORLD,
+      MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag, cartesian_communicator,
                 &requests[2]);
-      MPI_Isend(&buffer[1], 1, MPI_INT, right, tag, MPI_COMM_WORLD,
+      MPI_Isend(&buffer[1], 1, MPI_INT, right, tag, cartesian_communicator,
                 &requests[1]);
-      MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, MPI_COMM_WORLD,
+      MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, cartesian_communicator,
                 &requests[3]);
       MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
 
@@ -92,6 +95,8 @@ int main(int argc, char **argv) {
     buffer[0] = rank;
     buffer[1] = -rank;
     buffer[2] = buffer[3] = 0;
+
+    MPI_Barrier(cartesian_communicator);
   }
 
   MPI_Finalize();
