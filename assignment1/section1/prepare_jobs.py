@@ -1,7 +1,12 @@
 from string import Template
 import sys
 
-n_max = int(sys.argv[1])
+if len(sys.argv) == 3:
+	n_min = int(sys.argv[1])
+	n_max = int(sys.argv[2])
+else:
+	n_min = 2
+	n_max = int(sys.argv[1])
 
 template = """
 #!/bin/bash
@@ -28,7 +33,7 @@ mpic++ -D TIME_ONLY -D MAIN_ONLY ring.cpp
 mpirun -np $P a.out
 """
 
-for i in range(2,n_max+1):
+for i in range(n_min,n_max+1):
 	t = Template(template)
 	text = t.substitute({'P': i, 'walltime': '00:30:00'})
 
