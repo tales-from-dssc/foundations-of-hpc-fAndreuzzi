@@ -3,11 +3,6 @@ import sys
 
 n_max = int(sys.argv[1])
 
-async = int(sys.argv[2])
-async_flag = ''
-if async == 1:
-	async_flag = '-D async'
-
 template = """
 #!/bin/bash
 ### Job Name
@@ -27,17 +22,15 @@ cd /u/dssc/fandreuz/HPC/assignment1
 
 module load openmpi/4.0.3/gnu/9.3.0
 
-mpic++ $async ring.cpp
+mpic++ -D TIME_ONLY -D MAIN_ONLY ring.cpp
 
 ### Run the executable
-for n in {{2..1000}};
-do mpirun -np $P a.out && echo "T# STOP";
-done;
+mpirun -np $P a.out
 """
 
 for i in range(2,n_max+1):
 	t = Template(template)
-	text = t.substitute({'P': i, 'walltime': '00:30:00', 'async': async_flag})
+	text = t.substitute({'P': i, 'walltime': '00:30:00'})
 
 	text_file = open("ring{}.pbs".format(i), "w")
 	text_file.write(text)
