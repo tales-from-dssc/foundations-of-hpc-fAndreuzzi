@@ -49,11 +49,11 @@ int main(int argc, char **argv) {
   for (int it = 0; it < ITERATIONS; ++it) {
     start_time = MPI_Wtime();
 
-  for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < size; ++i) {
       MPI_Isend(&buffer[0], 1, MPI_INT, left, tag, cartesian_communicator,
                 &requests[0]);
-      MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag, cartesian_communicator,
-                &requests[2]);
+      MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag,
+                cartesian_communicator, &requests[2]);
       MPI_Isend(&buffer[1], 1, MPI_INT, right, tag, cartesian_communicator,
                 &requests[1]);
       MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, cartesian_communicator,
@@ -71,9 +71,10 @@ int main(int argc, char **argv) {
       // update the content of the SEND part of the buffer
       buffer[1] = buffer[3] + rank;
       buffer[0] = buffer[2] - rank;
-      }
+    }
 
-	times[it] = MPI_Wtime() - start_time;
+    if (it >= INITIAL_SKIP)
+      times[it - INITIAL_SKIP] = MPI_Wtime() - start_time;
 
 #ifndef TIME_ONLY
     std::cout << "I am process " << rank << " and i have received " << msg_count
@@ -92,7 +93,8 @@ int main(int argc, char **argv) {
 
   // output the times
   if (rank == 0)
-	for (int i = 0; i < ITERATIONS; ++i) std::cout << times[i] << std::endl;
+    for (int i = 0; i < ITERATIONS - INITIAL_SKIP; ++i)
+      std::cout << times[i] << std::endl;
 
   MPI_Finalize();
 }
