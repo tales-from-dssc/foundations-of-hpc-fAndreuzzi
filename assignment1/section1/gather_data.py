@@ -17,8 +17,16 @@ for i in range(n_min,n_max+1):
 	output = stream.readlines()
         
 	samples = []
+	idx = 0
 	for line in output:
-		samples.append(float(line[3:]))
+		try:
+			samples.append(float(line))
+			idx += 1
+		except:
+			print(idx)
+			print(i)
+			print(line)
+			raise ValueError()
 
 	data[i-n_min,0] = np.max(samples)
 	data[i-n_min,1] = np.min(samples)
