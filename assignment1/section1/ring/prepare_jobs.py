@@ -1,7 +1,7 @@
 from string import Template
 import sys
 
-if len(sys.argv) == 3:
+if len(sys.argv) >= 3:
 	n_min = int(sys.argv[1])
 	n_max = int(sys.argv[2])
 else:
@@ -27,10 +27,13 @@ cd /u/dssc/fandreuz/HPC/assignment1
 
 module load openmpi/4.0.3/gnu/9.3.0
 
-mpic++ -D TIME_ONLY -D MAIN_ONLY ring.cpp
+declare -a opt_flags=("-O0" "-O1" "-O2" "-O3" "-O3 -march=native" )
 
-### Run the executable
-mpirun -np $P a.out
+for opt in $${opt_flags[@]}; do
+	mpic++ $$opt -D TIME_ONLY ring.cpp
+	mpirun -np $P a.out
+	echo "STOP"
+done
 """
 
 for i in range(n_min,n_max+1):
