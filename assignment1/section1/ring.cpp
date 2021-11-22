@@ -6,24 +6,17 @@
 #define ITERATIONS 1000000
 #define INITIAL_SKIP 1000
 
-// updates the content of buffer (which is expected to contain four integers)
-// according to the statement of the assignment
-void update_send_buffer(int *buffer, int rank) {
-  // if async is true, the buffer is 4 bytes long
-  // and we keep separate variables for sent and received variables
-  buffer[1] = buffer[3] + rank;
-  buffer[0] = buffer[2] - rank;
-}
-
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
+
+  double times[ITERATIONS - INITIAL_SKIP];
 
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int periodic = 1;
   MPI_Comm cartesian_communicator;
-  MPI_Cart_create(MPI_COMM_WORLD, 1, &size, &periodic, 0,
+  MPI_Cart_create(MPI_COMM_WORLD, 1, &size, &periodic, 1,
                   &cartesian_communicator);
 
   int rank;
@@ -37,7 +30,7 @@ int main(int argc, char **argv) {
   const int right_tag = TAG_MULTIPLIER * right;
   const int left_tag = TAG_MULTIPLIER * left;
 
-  const int expected_send = size * (size - 1) / 2 - rank;
+  double start_time;
 
   int msg_count = 0;
 
@@ -53,10 +46,10 @@ int main(int argc, char **argv) {
   int buffer[] = {rank, -rank, 0, 0};
   MPI_Request requests[4];
 
-  for (int it = 0; it < ITERATIONS; it++) {
-    double start_time = MPI_Wtime();
+  for (int it = 0; it < ITERATIONS; ++it) {
+    start_time = MPI_Wtime();
 
-    do {
+  for (int i = 0; i < size; ++i) {
       MPI_Isend(&buffer[0], 1, MPI_INT, left, tag, cartesian_communicator,
                 &requests[0]);
       MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag, cartesian_communicator,
@@ -75,14 +68,12 @@ int main(int argc, char **argv) {
                 << std::endl;
 #endif
 
-      update_send_buffer(buffer, rank);
-    } while (buffer[1] != expected_send || buffer[0] != -expected_send);
+      // update the content of the SEND part of the buffer
+      buffer[1] = buffer[3] + rank;
+      buffer[0] = buffer[2] - rank;
+      }
 
-#ifdef MAIN_ONLY
-    if (rank == 0)
-#endif
-      if (it >= INITIAL_SKIP)
-        std::cout << "T# " << MPI_Wtime() - start_time << std::endl;
+	times[it] = MPI_Wtime() - start_time;
 
 #ifndef TIME_ONLY
     std::cout << "I am process " << rank << " and i have received " << msg_count
@@ -98,6 +89,10 @@ int main(int argc, char **argv) {
 
     MPI_Barrier(cartesian_communicator);
   }
+
+  // output the times
+  if (rank == 0)
+	for (int i = 0; i < ITERATIONS; ++i) std::cout << times[i] << std::endl;
 
   MPI_Finalize();
 }
