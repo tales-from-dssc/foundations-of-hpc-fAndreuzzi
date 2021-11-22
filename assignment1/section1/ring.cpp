@@ -3,7 +3,11 @@
 #include <mpi.h>
 
 #define TAG_MULTIPLIER 10
+// number of time we repeat the whole communication to obtain a decent
+// statistic on the running time
 #define ITERATIONS 1000000
+// we skip (i.e. do not count) the first INITIAL_SKIP iterations since they
+// usually contain a little bit of noise
 #define INITIAL_SKIP 1000
 
 int main(int argc, char **argv) {
@@ -47,6 +51,10 @@ int main(int argc, char **argv) {
   MPI_Request requests[4];
 
   for (int it = 0; it < ITERATIONS; ++it) {
+    // synchronize the processes before starting the communication
+    MPI_Barrier(cartesian_communicator);
+
+    // save the starting time of this iteration
     start_time = MPI_Wtime();
 
     for (int i = 0; i < size; ++i) {
@@ -73,6 +81,9 @@ int main(int argc, char **argv) {
       buffer[0] = buffer[2] - rank;
     }
 
+    // before taking the time we wait that all the processes are done with their
+    // own communication
+    MPI_Barrier(cartesian_communicator);
     if (it >= INITIAL_SKIP)
       times[it - INITIAL_SKIP] = MPI_Wtime() - start_time;
 
@@ -87,8 +98,6 @@ int main(int argc, char **argv) {
     buffer[0] = rank;
     buffer[1] = -rank;
     buffer[2] = buffer[3] = 0;
-
-    MPI_Barrier(cartesian_communicator);
   }
 
   // output the times
