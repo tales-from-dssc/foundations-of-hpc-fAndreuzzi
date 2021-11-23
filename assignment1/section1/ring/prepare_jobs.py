@@ -16,14 +16,14 @@ template = """
 #PBS -l walltime=$walltime
 #PBS -q dssc
 ### Merge output and error files
-#PBS -o /u/dssc/fandreuz/HPC/assignment1/ring$P.txt
+#PBS -o /u/dssc/fandreuz/HPC/assignment1/ring/ring$P.txt
 #PBS -l select=1:ncpus=$P:mpiprocs=$P
 ### Send email on abort, begin and end
 #PBS -m abe
 ### Specify mail recipient
 #PBS -M andreuzzi.francesco@gmail.com
 
-cd /u/dssc/fandreuz/HPC/assignment1
+cd /u/dssc/fandreuz/HPC/assignment1/ring
 
 module load openmpi/4.0.3/gnu/9.3.0
 
