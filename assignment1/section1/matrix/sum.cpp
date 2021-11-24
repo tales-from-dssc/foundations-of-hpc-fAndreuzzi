@@ -173,9 +173,57 @@ std::vector<Matrix<double, 3>> receive_matrix(const int *matrix_size,
         the complete matrix. This is a blocking function since it waits
         for the reception of all the pieces.
 */
-void receive_matrix_blocks(Matrix<double, 3>& dest,
-                                        const int *blocks_size,
-                                        const MPI_Comm comm) {}
+void receive_compose_matrix(Matrix<double, 3> &dest, const int *block_size,
+                            const MPI_Comm comm) {
+  int block_n_cells = block_size[0] * block_size[1] * block_size[2];
+
+  int size;
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Request *requests = new MPI_Request[size];
+
+  std::vector<Matrix<double, 3>> blocks;
+
+  int top_left_corner[3];
+  int process_coords[3];
+  int request_idx = 0;
+
+  Index matrix_size[]{dest.dim1(), dest.dim2(), dest.dim3()};
+
+  int receive_from;
+  for (process_coords[0] = 0;
+       process_coords[0] < matrix_size[0] / block_size[0];
+       ++process_coords[0]) {
+    top_left_corner[0] = process_coords[0] * block_size[0];
+    for (process_coords[1] = 0;
+         process_coords[1] < matrix_size[1] / block_size[1];
+         ++process_coords[1]) {
+      top_left_corner[1] = process_coords[1] * block_size[1];
+      for (process_coords[2] = 0;
+           process_coords[2] < matrix_size[2] / block_size[2];
+           ++process_coords[2]) {
+        top_left_corner[2] = process_coords[2] * block_size[2];
+
+        Matrix<double, 3> blk = block(dest, block_size, top_left_corner);
+        blocks.push_back(blk);
+
+        MPI_Cart_rank(comm, process_coords, &receive_from);
+        MPI_Irecv(blk.data(), block_n_cells, MPI_DOUBLE, receive_from,
+                  BLOCK_SUM_TAG, comm, &requests[request_idx++]);
+      }
+    }
+  }
+
+#ifdef DEBUG
+  std::cout << "Starting waiting for responses" << std::endl;
+#endif
+
+  MPI_Waitall(size, requests, MPI_STATUSES_IGNORE);
+  delete[] requests;
+
+#ifdef DEBUG
+  std::cout << "Everyone sent the sum!" << std::endl;
+#endif
+}
 
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
@@ -284,6 +332,9 @@ int main(int argc, char **argv) {
               -1, &send_req);
 
   if (rank == 0) {
+    Matrix<double, 3> result(matrix_size[0], matrix_size[1], matrix_size[2]);
+    receive_compose_matrix(result, blocks_size, cartesian_communicator);
+    std::cout << "Result ------------------------" << std::endl << result;
   }
 
   MPI_Finalize();
