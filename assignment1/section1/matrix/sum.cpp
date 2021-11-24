@@ -39,6 +39,24 @@ std::ostream &operator<<(std::ostream &os, const Matrix<T, 3> &p) {
   return os;
 }
 
+Matrix<double, 3> operator+(const Matrix<double, 3> matrix1,
+                            const Matrix<double, 3> matrix2) {
+  if (matrix1.dim1() != matrix2.dim2() || matrix1.dim2() != matrix2.dim2() ||
+      matrix1.dim3() != matrix2.dim3())
+    throw std::invalid_argument(
+        "Summation requires that the matrix have the same shape");
+
+  Index dims[]{matrix1.dim1(), matrix1.dim2(), matrix1.dim3()};
+
+  Matrix<double, 3> sum(dims[0], dims[1], dims[2]);
+  for (int i = 0; i < dims[0]; i++)
+    for (int j = 0; j < dims[1]; j++)
+      for (int k = 0; k < dims[2]; k++)
+        sum(i, j, k) = matrix1(i, j, k) + matrix2(i, j, k);
+
+  return sum;
+}
+
 template <typename T>
 Matrix<T, 3> block(const Matrix<T, 3> matrix, const int *block_size,
                    const int *top_left_corner) {
