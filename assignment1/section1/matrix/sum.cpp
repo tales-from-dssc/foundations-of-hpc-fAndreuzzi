@@ -2,15 +2,19 @@
 #include <iostream>
 #include <mpi.h>
 #include <random>
+#include <stdexcept>
+#include <unistd.h>
 #include <vector>
 using namespace Numeric_lib;
 
-Matrix<double, 3> random_3d_matrix(int dim1, int dim2, int dim3) {
+#define BLOCK_1_TAG 0
+#define BLOCK_2_TAG 1
+
+Matrix<double, 3> random_3d_matrix(int dim1, int dim2, int dim3,
+                                   std::default_random_engine &ran) {
   Matrix<double, 3> m(dim1, dim2, dim3);
 
-  std::default_random_engine ran{};
   std::uniform_real_distribution<> ureal{-10, 10};
-
   for (Index i = 0; i < dim1; ++i)
     for (Index j = 0; j < dim2; ++j)
       for (Index k = 0; k < dim3; ++k)
@@ -55,31 +59,39 @@ Matrix<T, 3> block(const Matrix<T, 3> matrix, const int *block_size,
   return data;
 }
 
-void blockify_and_msg(const Matrix<double, 3> matrix, const int *block_size,
+void blockify_and_msg(std::vector<Matrix<double, 3>> matrices,
+                      std::vector<int> tags, const int *block_size,
                       const MPI_Comm comm) {
 #ifdef DEBUG
   std::cout << "blockify_and_msg called" << std::endl;
 #endif
+  if (matrices.size() != tags.size())
+    throw std::invalid_argument("n. of matrices != n. of tags");
+
   int block_n_cells = block_size[0] * block_size[1] * block_size[2];
 
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Request *requests = new MPI_Request[size];
+  MPI_Request *requests = new MPI_Request[size * tags.size()];
 
   int top_left_corner[3];
   int process_coords[3];
   int request_idx = 0;
 
+  Index matrix_size[]{matrices.at(0).dim1(), matrices.at(0).dim2(),
+                      matrices.at(0).dim3()};
+
   int send_to;
-  for (process_coords[0] = 0; process_coords[0] < matrix.dim1() / block_size[0];
+  for (process_coords[0] = 0;
+       process_coords[0] < matrix_size[0] / block_size[0];
        ++process_coords[0]) {
     top_left_corner[0] = process_coords[0] * block_size[0];
     for (process_coords[1] = 0;
-         process_coords[1] < matrix.dim2() / block_size[1];
+         process_coords[1] < matrix_size[1] / block_size[1];
          ++process_coords[1]) {
       top_left_corner[1] = process_coords[1] * block_size[1];
       for (process_coords[2] = 0;
-           process_coords[2] < matrix.dim3() / block_size[2];
+           process_coords[2] < matrix_size[2] / block_size[2];
            ++process_coords[2]) {
         top_left_corner[2] = process_coords[2] * block_size[2];
 
@@ -92,9 +104,12 @@ void blockify_and_msg(const Matrix<double, 3> matrix, const int *block_size,
         std::cout << "sending to " << send_to << std::endl;
 #endif
 
-        Matrix<double, 3> blk = block(matrix, block_size, top_left_corner);
-        MPI_Isend(blk.data(), block_n_cells, MPI_DOUBLE, send_to, 0, comm,
-                  &requests[request_idx++]);
+        for (int w = 0; w < matrices.size(); w++) {
+          Matrix<double, 3> blk =
+              block(matrices.at(w), block_size, top_left_corner);
+          MPI_Isend(blk.data(), block_n_cells, MPI_DOUBLE, send_to, tags.at(w),
+                    comm, &requests[request_idx++]);
+        }
       }
     }
   }
@@ -105,14 +120,21 @@ void blockify_and_msg(const Matrix<double, 3> matrix, const int *block_size,
   delete[] requests;
 }
 
-Matrix<double, 3> receive_block(const int *block_size, const MPI_Comm comm,
-                                int root_process) {
+std::vector<Matrix<double, 3>> receive_block(const int *block_size,
+                                             const MPI_Comm comm,
+                                             int root_process,
+                                             std::vector<int> tags) {
   int block_n_cells = block_size[0] * block_size[1] * block_size[2];
-  Matrix<double, 3> blk(block_size[0], block_size[1], block_size[2]);
-  MPI_Status status;
-  MPI_Recv(blk.data(), block_n_cells, MPI_DOUBLE, root_process, MPI_ANY_TAG,
-           comm, &status);
-  return blk;
+
+  std::vector<Matrix<double, 3>> matrices;
+  for (int i = 0; i < tags.size(); i++) {
+    Matrix<double, 3> blk(block_size[0], block_size[1], block_size[2]);
+    MPI_Status status;
+    MPI_Recv(blk.data(), block_n_cells, MPI_DOUBLE, root_process, tags.at(i),
+             comm, &status);
+    matrices.push_back(blk);
+  }
+  return matrices;
 }
 
 int main(int argc, char **argv) {
@@ -134,6 +156,19 @@ int main(int argc, char **argv) {
 
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  /*  if (rank == 0) {
+      volatile int i = 0;
+      char hostname[256];
+      gethostname(hostname, sizeof(hostname));
+      std::cout << "rank " << rank << " -> PID " << getpid() << " on " <<
+    hostname
+                << " ready for attach" << std::endl;
+      fflush(stdout);
+      while (0 == i)
+        sleep(5);
+    }
+  */
 
   // verify that the number of MPI processes is enough
   int product = 1;
@@ -164,30 +199,42 @@ int main(int argc, char **argv) {
 
   MPI_Comm_rank(cartesian_communicator, &rank);
 
+  std::vector<int> tags{BLOCK_1_TAG, BLOCK_2_TAG};
   if (rank == 0) {
     for (int i = 0; i < 3; i++)
       std::cout << "Matrix.shape[" << i << "] = " << matrix_size[i]
                 << std::endl;
 
-    Matrix<double, 3> matrix =
-        random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2]);
-    std::cout << matrix << std::endl;
+    std::default_random_engine ran{};
 
-    blockify_and_msg(matrix, blocks_size, cartesian_communicator);
+    Matrix<double, 3> matrix1 =
+        random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2], ran);
+    std::cout << matrix1 << std::endl;
+
+    Matrix<double, 3> matrix2 =
+        random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2], ran);
+    std::cout << matrix2 << std::endl;
+
+    std::vector<Matrix<double, 3>> matrices{matrix1, matrix2};
+    blockify_and_msg(matrices, tags, blocks_size, cartesian_communicator);
   }
 
 #ifdef DEBUG
   std::cout << "I'm process " << rank << std::endl;
 #endif
-  Matrix<double, 3> blk = receive_block(blocks_size, cartesian_communicator, 0);
+  std::vector<Matrix<double, 3>> blks =
+      receive_block(blocks_size, cartesian_communicator, 0, tags);
 
 #ifdef DEBUG
   std::cout << rank << " received "
-            << "(" << blk.dim1() << "," << blk.dim2() << "," << blk.dim3()
-            << ")" << std::endl;
+            << "(" << blks.at(0).dim1() << "," << blks.at(0).dim2() << ","
+            << blks.at(0).dim3() << ")" << std::endl;
 
   if (rank == 0) {
-    std::cout << blk << std::endl;
+    std::cout << "Block 1 ------------------------" << std::endl;
+    std::cout << blks.at(0) << std::endl;
+    std::cout << "Block 2 ------------------------" << std::endl;
+    std::cout << blks.at(1) << std::endl;
   }
 #endif
 
