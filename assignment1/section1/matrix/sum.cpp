@@ -46,6 +46,10 @@ public:
     return *this;
   }
 
+  // disable copy semantics
+  Matrix3D(const Matrix3D &) = delete;
+  Matrix3D &operator=(const Matrix3D &) = delete;
+
   ~Matrix3D() { delete[] elem; }
 };
 
