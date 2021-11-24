@@ -11,6 +11,44 @@ using namespace Numeric_lib;
 #define BLOCK_2_TAG 1
 #define BLOCK_SUM_TAG 2
 
+template <typename T> class Matrix3D {
+  T *elem;
+  int dim1, dim2, dim3;
+
+public:
+  Matrix3D(int dim1, int dim2, int dim3) {
+    this->dim1 = dim1;
+    this->dim2 = dim2;
+    this->dim3 = dim3;
+
+    elem = new T[dim1 * dim2 * dim3];
+  }
+
+  Matrix3D(Matrix3D &&that) {
+    dim1 = that.dim1;
+    dim2 = that.dim2;
+    dim3 = that.dim3;
+
+    elem = that.elem;
+    that.elem = nullptr;
+  }
+
+  Matrix3D &operator=(Matrix3D &&that) {
+    delete[] elem;
+
+    elem = that.elem;
+    that.elem = nullptr;
+
+    dim1 = that.dim1;
+    dim2 = that.dim2;
+    dim3 = that.dim3;
+
+    return *this;
+  }
+
+  ~Matrix3D() { delete[] elem; }
+};
+
 Matrix<double, 3> random_3d_matrix(int dim1, int dim2, int dim3,
                                    std::default_random_engine &ran) {
   Matrix<double, 3> m(dim1, dim2, dim3);
