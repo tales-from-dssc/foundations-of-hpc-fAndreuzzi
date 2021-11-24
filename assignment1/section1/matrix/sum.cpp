@@ -36,17 +36,17 @@ std::ostream &operator<<(std::ostream &os, const Matrix<T, 3> &p) {
 }
 
 template <typename T>
-Matrix<double, 3> block(const Matrix<T, 3> matrix, const int *block_size,
-                        const std::tuple<int, int, int> top_left_corner) {
-  Matrix<double, 3> data(block_size[0], block_size[1], block_size[2]);
+Matrix<T, 3> block(const Matrix<T, 3> matrix, const int *block_size,
+                   const int *top_left_corner) {
+  Matrix<T, 3> data(block_size[0], block_size[1], block_size[2]);
 
   int slice, row, column;
   for (int i = 0; i < block_size[0]; i++) {
-    slice = std::get<0>(top_left_corner) + i;
+    slice = top_left_corner[0] + i;
     for (int j = 0; j < block_size[1]; j++) {
-      row = std::get<1>(top_left_corner) + j;
+      row = top_left_corner[1] + j;
       for (int k = 0; k < block_size[2]; k++) {
-        column = std::get<2>(top_left_corner) + k;
+        column = top_left_corner[2] + k;
         data(i, j, k) = matrix(slice, row, column);
       }
     }
@@ -55,24 +55,65 @@ Matrix<double, 3> block(const Matrix<T, 3> matrix, const int *block_size,
   return data;
 }
 
-template <typename T>
-std::vector<Matrix<double, 3>> blockify(const Matrix<T, 3> matrix,
-                                        int *block_size) {
-  std::vector<Matrix<double, 3>> vec;
-  if (matrix.dim1() % block_size[0] != 0 ||
-      matrix.dim2() % block_size[1] != 0 || matrix.dim3() % block_size[2] != 0)
-    return vec;
+void blockify_and_msg(const Matrix<double, 3> matrix, const int *block_size,
+                      const MPI_Comm comm) {
+#ifdef DEBUG
+  std::cout << "blockify_and_msg called" << std::endl;
+#endif
+  int block_n_cells = block_size[0] * block_size[1] * block_size[2];
 
-  for (int i = 0; i < matrix.dim1(); i += block_size[0])
-    for (int j = 0; j < matrix.dim2(); j += block_size[1])
-      for (int k = 0; k < matrix.dim3(); k += block_size[2])
-        vec.push_back(block(matrix, block_size, std::make_tuple(i, j, k)));
-  return vec;
+  int size;
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Request *requests = new MPI_Request[size];
+
+  int top_left_corner[3];
+  int process_coords[3];
+  int request_idx = 0;
+
+  int send_to;
+  for (process_coords[0] = 0; process_coords[0] < matrix.dim1() / block_size[0];
+       ++process_coords[0]) {
+    top_left_corner[0] = process_coords[0] * block_size[0];
+    for (process_coords[1] = 0;
+         process_coords[1] < matrix.dim2() / block_size[1];
+         ++process_coords[1]) {
+      top_left_corner[1] = process_coords[1] * block_size[1];
+      for (process_coords[2] = 0;
+           process_coords[2] < matrix.dim3() / block_size[2];
+           ++process_coords[2]) {
+        top_left_corner[2] = process_coords[2] * block_size[2];
+
+#ifdef DEBUG
+        std::cout << "(" << process_coords[0] << "," << process_coords[1] << ","
+                  << process_coords[2] << ")" << std::endl;
+#endif
+        MPI_Cart_rank(comm, process_coords, &send_to);
+#ifdef DEBUG
+        std::cout << "sending to " << send_to << std::endl;
+#endif
+
+        Matrix<double, 3> blk = block(matrix, block_size, top_left_corner);
+        MPI_Isend(blk.data(), block_n_cells, MPI_DOUBLE, send_to, 0, comm,
+                  &requests[request_idx++]);
+      }
+    }
+  }
+
+#ifdef DEBUG
+  std::cout << "Freeing MPI_Request(s)" << std::endl;
+#endif
+  delete[] requests;
 }
 
-template <typename T>
-void bcast_matrix(const MPI_Comm &communicator, const Matrix<T, 3> matrix,
-                  const std::tuple<int, int, int> blocks_size) {}
+Matrix<double, 3> receive_block(const int *block_size, const MPI_Comm comm,
+                                int root_process) {
+  int block_n_cells = block_size[0] * block_size[1] * block_size[2];
+  Matrix<double, 3> blk(block_size[0], block_size[1], block_size[2]);
+  MPI_Status status;
+  MPI_Recv(blk.data(), block_n_cells, MPI_DOUBLE, root_process, MPI_ANY_TAG,
+           comm, &status);
+  return blk;
+}
 
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
@@ -80,39 +121,75 @@ int main(int argc, char **argv) {
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int processors_distribution[] = {0, 0, 0};
-  MPI_Dims_create(size, 3, processors_distribution);
-
-  int periodic = 0;
-  int reorder = 1;
-  MPI_Comm cartesian_communicator;
-  MPI_Cart_create(MPI_COMM_WORLD, 3, processors_distribution, &periodic,
-                  reorder, &cartesian_communicator);
+  int matrix_size[3];
+  int blocks_size[3];
+  for (int i = 0; i < 3; i++) {
+    matrix_size[i] = atoi(argv[i + 1]);
+    blocks_size[i] = atoi(argv[3 + i + 1]);
+    // if the dimension of the blocks is not covering the matrix exactly on
+    // the axis we augment the dimension along that axis
+    int residual = matrix_size[i] % blocks_size[i];
+    matrix_size[i] += (residual != 0) * (blocks_size[i] - residual);
+  }
 
   int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  // verify that the number of MPI processes is enough
+  int product = 1;
+  for (int i = 0; i < 3; i++)
+    product *= matrix_size[i] / blocks_size[i];
+  if (product != size) {
+    if (rank == 0)
+      std::cout << "Invalid number of MPI processes" << std::endl;
+    MPI_Finalize();
+    return 1;
+  }
+
+  int processors_distribution[3];
+  for (int i = 0; i < 3; i++)
+    processors_distribution[i] = matrix_size[i] / blocks_size[i];
+#ifdef DEBUG
+  if (rank == 0)
+    std::cout << "Processor distribution: " << processors_distribution[0]
+              << ", " << processors_distribution[1] << ", "
+              << processors_distribution[2] << std::endl;
+#endif
+
+  int periodic[]{0, 0, 0};
+  int reorder = 1;
+  MPI_Comm cartesian_communicator;
+  MPI_Cart_create(MPI_COMM_WORLD, 3, processors_distribution, periodic, reorder,
+                  &cartesian_communicator);
+
   MPI_Comm_rank(cartesian_communicator, &rank);
 
   if (rank == 0) {
-    int matrix_size[3];
-    int blocks_size[3];
-    for (int i = 0; i < 3; i++) {
-      matrix_size[i] = atoi(argv[i + 1]);
-      blocks_size[i] = atoi(argv[3 + i + 1]);
-      // if the dimension of the blocks is not covering the matrix exactly on
-      // the axis we augment the dimension along that axis
-      int residual = matrix_size[i] % blocks_size[i];
-      matrix_size[i] += (residual != 0) * (blocks_size[i] - residual);
+    for (int i = 0; i < 3; i++)
       std::cout << "Matrix.shape[" << i << "] = " << matrix_size[i]
                 << std::endl;
-    }
 
-    auto m = random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2]);
-    std::cout << m << std::endl;
+    Matrix<double, 3> matrix =
+        random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2]);
+    std::cout << matrix << std::endl;
 
-    std::vector<Matrix<double, 3>> ms = blockify(m, blocks_size);
-    for (int i = 0; i < ms.size(); i++)
-      std::cout << ms[i] << std::endl;
+    blockify_and_msg(matrix, blocks_size, cartesian_communicator);
   }
+
+#ifdef DEBUG
+  std::cout << "I'm process " << rank << std::endl;
+#endif
+  Matrix<double, 3> blk = receive_block(blocks_size, cartesian_communicator, 0);
+
+#ifdef DEBUG
+  std::cout << rank << " received "
+            << "(" << blk.dim1() << "," << blk.dim2() << "," << blk.dim3()
+            << ")" << std::endl;
+
+  if (rank == 0) {
+    std::cout << blk << std::endl;
+  }
+#endif
 
   MPI_Finalize();
 }
