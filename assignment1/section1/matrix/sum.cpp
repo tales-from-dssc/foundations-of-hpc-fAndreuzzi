@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int processors_distribution[] = {1, 2, 3};
+  int processors_distribution[] = {0,0,0};
   MPI_Dims_create(size, 3, processors_distribution);
 
   int periodic = 0;
@@ -97,10 +97,19 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(cartesian_communicator, &rank);
 
   if (rank == 0) {
-    auto m = random_3d_matrix(3, 2, 3);
+    int matrix_size[3];
+    for (int i = 0; i < 3; i++)
+      matrix_size[i] = atoi(argv[i + 1]);
+
+    auto m = random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2]);
     std::cout << m << std::endl;
 
-    std::vector<Matrix<double, 3>> ms = blockify(m, std::make_tuple(1, 1, 3));
+    int blocks_size[3];
+    for (int i = 0; i < 3; i++)
+      blocks_size[i] = atoi(argv[3 + i + 1]);
+
+    std::vector<Matrix<double, 3>> ms = blockify(
+        m, std::make_tuple(blocks_size[0], blocks_size[1], blocks_size[2]));
     for (int i = 0; i < ms.size(); i++)
       std::cout << ms[i] << std::endl;
   }
