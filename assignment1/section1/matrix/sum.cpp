@@ -9,6 +9,7 @@ using namespace Numeric_lib;
 
 #define BLOCK_1_TAG 0
 #define BLOCK_2_TAG 1
+#define BLOCK_SUM_TAG 2
 
 Matrix<double, 3> random_3d_matrix(int dim1, int dim2, int dim3,
                                    std::default_random_engine &ran) {
@@ -77,6 +78,13 @@ Matrix<T, 3> block(const Matrix<T, 3> matrix, const int *block_size,
   return data;
 }
 
+void send_matrix(Matrix<double, 3> matrix, int send_to, int tag, MPI_Comm comm,
+                 int n_cells, MPI_Request *req) {
+  if (n_cells == -1)
+    n_cells = matrix.dim1() * matrix.dim2() * matrix.dim3();
+  MPI_Isend(matrix.data(), n_cells, MPI_DOUBLE, send_to, tag, comm, req);
+}
+
 void blockify_and_msg(std::vector<Matrix<double, 3>> matrices,
                       std::vector<int> tags, const int *block_size,
                       const MPI_Comm comm) {
@@ -125,8 +133,8 @@ void blockify_and_msg(std::vector<Matrix<double, 3>> matrices,
         for (int w = 0; w < matrices.size(); w++) {
           Matrix<double, 3> blk =
               block(matrices.at(w), block_size, top_left_corner);
-          MPI_Isend(blk.data(), block_n_cells, MPI_DOUBLE, send_to, tags.at(w),
-                    comm, &requests[request_idx++]);
+          send_matrix(blk, send_to, tags.at(w), comm, block_n_cells,
+                      &requests[request_idx++]);
         }
       }
     }
@@ -138,22 +146,36 @@ void blockify_and_msg(std::vector<Matrix<double, 3>> matrices,
   delete[] requests;
 }
 
-std::vector<Matrix<double, 3>> receive_block(const int *block_size,
-                                             const MPI_Comm comm,
-                                             int root_process,
-                                             std::vector<int> tags) {
-  int block_n_cells = block_size[0] * block_size[1] * block_size[2];
+/*
+        Receive a vector of matrices from sending_process. The number
+        of expected matrices is equal to the number of tags. This
+        function is blocking.
+*/
+std::vector<Matrix<double, 3>> receive_matrix(const int *matrix_size,
+                                              const MPI_Comm comm,
+                                              int sending_process,
+                                              std::vector<int> tags) {
+  int matrix_n_cells = matrix_size[0] * matrix_size[1] * matrix_size[2];
 
   std::vector<Matrix<double, 3>> matrices;
   for (int i = 0; i < tags.size(); i++) {
-    Matrix<double, 3> blk(block_size[0], block_size[1], block_size[2]);
+    Matrix<double, 3> m(matrix_size[0], matrix_size[1], matrix_size[2]);
     MPI_Status status;
-    MPI_Recv(blk.data(), block_n_cells, MPI_DOUBLE, root_process, tags.at(i),
+    MPI_Recv(m.data(), matrix_n_cells, MPI_DOUBLE, sending_process, tags.at(i),
              comm, &status);
-    matrices.push_back(blk);
+    matrices.push_back(m);
   }
   return matrices;
 }
+
+/*
+        Receives asynchronously blocks from the processes and composes
+        the complete matrix. This is a blocking function since it waits
+        for the reception of all the pieces.
+*/
+void receive_matrix_blocks(Matrix<double, 3>& dest,
+                                        const int *blocks_size,
+                                        const MPI_Comm comm) {}
 
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
@@ -175,18 +197,18 @@ int main(int argc, char **argv) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  /*  if (rank == 0) {
-      volatile int i = 0;
-      char hostname[256];
-      gethostname(hostname, sizeof(hostname));
-      std::cout << "rank " << rank << " -> PID " << getpid() << " on " <<
-    hostname
-                << " ready for attach" << std::endl;
-      fflush(stdout);
-      while (0 == i)
-        sleep(5);
-    }
-  */
+#ifdef MPI_DEBUG
+  if (rank == 0) {
+    volatile int i = 0;
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    std::cout << "rank " << rank << " -> PID " << getpid() << " on " << hostname
+              << " ready for attach" << std::endl;
+    fflush(stdout);
+    while (0 == i)
+      sleep(5);
+  }
+#endif
 
   // verify that the number of MPI processes is enough
   int product = 1;
@@ -240,8 +262,9 @@ int main(int argc, char **argv) {
 #ifdef DEBUG
   std::cout << "I'm process " << rank << std::endl;
 #endif
+
   std::vector<Matrix<double, 3>> blks =
-      receive_block(blocks_size, cartesian_communicator, 0, tags);
+      receive_matrix(blocks_size, cartesian_communicator, 0, tags);
 
 #ifdef DEBUG
   std::cout << rank << " received "
@@ -255,6 +278,13 @@ int main(int argc, char **argv) {
     std::cout << blks.at(1) << std::endl;
   }
 #endif
+
+  MPI_Request send_req;
+  send_matrix(blks.at(0) + blks.at(1), 0, BLOCK_SUM_TAG, cartesian_communicator,
+              -1, &send_req);
+
+  if (rank == 0) {
+  }
 
   MPI_Finalize();
 }
