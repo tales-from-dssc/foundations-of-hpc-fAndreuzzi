@@ -36,18 +36,16 @@ std::ostream &operator<<(std::ostream &os, const Matrix<T, 3> &p) {
 }
 
 template <typename T>
-Matrix<double, 3> block(const Matrix<T, 3> matrix,
-                        const std::tuple<int, int, int> block_size,
+Matrix<double, 3> block(const Matrix<T, 3> matrix, const int *block_size,
                         const std::tuple<int, int, int> top_left_corner) {
-  Matrix<double, 3> data(std::get<0>(block_size), std::get<1>(block_size),
-                         std::get<2>(block_size));
+  Matrix<double, 3> data(block_size[0], block_size[1], block_size[2]);
 
   int slice, row, column;
-  for (int i = 0; i < std::get<0>(block_size); i++) {
+  for (int i = 0; i < block_size[0]; i++) {
     slice = std::get<0>(top_left_corner) + i;
-    for (int j = 0; j < std::get<1>(block_size); j++) {
+    for (int j = 0; j < block_size[1]; j++) {
       row = std::get<1>(top_left_corner) + j;
-      for (int k = 0; k < std::get<2>(block_size); k++) {
+      for (int k = 0; k < block_size[2]; k++) {
         column = std::get<2>(top_left_corner) + k;
         data(i, j, k) = matrix(slice, row, column);
       }
@@ -58,18 +56,16 @@ Matrix<double, 3> block(const Matrix<T, 3> matrix,
 }
 
 template <typename T>
-std::vector<Matrix<double, 3>>
-blockify(const Matrix<T, 3> matrix,
-         const std::tuple<int, int, int> block_size) {
+std::vector<Matrix<double, 3>> blockify(const Matrix<T, 3> matrix,
+                                        int *block_size) {
   std::vector<Matrix<double, 3>> vec;
-  if (matrix.dim1() % std::get<0>(block_size) != 0 ||
-      matrix.dim2() % std::get<1>(block_size) != 0 ||
-      matrix.dim3() % std::get<2>(block_size) != 0)
+  if (matrix.dim1() % block_size[0] != 0 ||
+      matrix.dim2() % block_size[1] != 0 || matrix.dim3() % block_size[2] != 0)
     return vec;
 
-  for (int i = 0; i < matrix.dim1(); i += std::get<0>(block_size))
-    for (int j = 0; j < matrix.dim2(); j += std::get<1>(block_size))
-      for (int k = 0; k < matrix.dim3(); k += std::get<2>(block_size))
+  for (int i = 0; i < matrix.dim1(); i += block_size[0])
+    for (int j = 0; j < matrix.dim2(); j += block_size[1])
+      for (int k = 0; k < matrix.dim3(); k += block_size[2])
         vec.push_back(block(matrix, block_size, std::make_tuple(i, j, k)));
   return vec;
 }
@@ -84,7 +80,7 @@ int main(int argc, char **argv) {
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int processors_distribution[] = {0,0,0};
+  int processors_distribution[] = {0, 0, 0};
   MPI_Dims_create(size, 3, processors_distribution);
 
   int periodic = 0;
@@ -98,18 +94,22 @@ int main(int argc, char **argv) {
 
   if (rank == 0) {
     int matrix_size[3];
-    for (int i = 0; i < 3; i++)
+    int blocks_size[3];
+    for (int i = 0; i < 3; i++) {
       matrix_size[i] = atoi(argv[i + 1]);
+      blocks_size[i] = atoi(argv[3 + i + 1]);
+      // if the dimension of the blocks is not covering the matrix exactly on
+      // the axis we augment the dimension along that axis
+      int residual = matrix_size[i] % blocks_size[i];
+      matrix_size[i] += (residual != 0) * (blocks_size[i] - residual);
+      std::cout << "Matrix.shape[" << i << "] = " << matrix_size[i]
+                << std::endl;
+    }
 
     auto m = random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2]);
     std::cout << m << std::endl;
 
-    int blocks_size[3];
-    for (int i = 0; i < 3; i++)
-      blocks_size[i] = atoi(argv[3 + i + 1]);
-
-    std::vector<Matrix<double, 3>> ms = blockify(
-        m, std::make_tuple(blocks_size[0], blocks_size[1], blocks_size[2]));
+    std::vector<Matrix<double, 3>> ms = blockify(m, blocks_size);
     for (int i = 0; i < ms.size(); i++)
       std::cout << ms[i] << std::endl;
   }
