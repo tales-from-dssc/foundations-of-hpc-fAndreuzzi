@@ -9,6 +9,15 @@
 #define BLOCK_2_TAG 1
 #define BLOCK_SUM_TAG 2
 
+/*
+        A wrapper of an array of T (allocated on the free store)
+        which behaves like a 3D matrix.
+
+        Copy semantics is disabled to avoid multiple instances
+        living at the same time. Move constructor/assignment is
+        implemented and encourage (remember not to use the rvalue
+        afterwards).
+*/
 template <typename T> class Matrix3D {
   T *elem;
   int dim1, dim2, dim3;
@@ -59,6 +68,7 @@ public:
     delete[] elem;
   }
 
+  // access the shape of this matrix
   int dim(int i) const {
     switch (i) {
     case 0:
@@ -79,8 +89,27 @@ public:
   T &operator()(int i, int j, int k) { return elem[map_3D_to_1D(i, j, k)]; }
 
   T *data() { return elem; }
+
+  Matrix3D<double> operator+(const Matrix3D<double> &matrix2) {
+    if (dim(0) != matrix2.dim(0) || dim(1) != matrix2.dim(1) ||
+        dim(2) != matrix2.dim(2))
+      throw std::invalid_argument(
+          "Summation requires that the two matrices have the same shape");
+
+    Matrix3D<double> sum(dim(0), dim(1), dim(2));
+    for (int i = 0; i < dim(0); i++)
+      for (int j = 0; j < dim(1); j++)
+        for (int k = 0; k < dim(2); k++)
+          sum(i, j, k) = (*this)(i, j, k) + matrix2(i, j, k);
+
+    return sum;
+  }
 };
 
+/*
+	Generate a random 3D matrix of doubles using the given random
+	engine.
+*/
 Matrix3D<double> random_3d_matrix(int dim1, int dim2, int dim3,
                                   std::default_random_engine &ran) {
   Matrix3D<double> m(dim1, dim2, dim3);
@@ -110,24 +139,15 @@ std::ostream &operator<<(std::ostream &os, const Matrix3D<T> &p) {
   return os;
 }
 
-Matrix3D<double> operator+(const Matrix3D<double> &matrix1,
-                           const Matrix3D<double> &matrix2) {
-  if (matrix1.dim(0) != matrix2.dim(0) || matrix1.dim(1) != matrix2.dim(1) ||
-      matrix1.dim(2) != matrix2.dim(2))
-    throw std::invalid_argument(
-        "Summation requires that the two matrices have the same shape");
+/*
+	Extract a block of the given size starting from the given top
+	left corner from the given matrix, and return it as a new 3D
+	matrix.
 
-  int dims[]{matrix1.dim(0), matrix1.dim(1), matrix1.dim(2)};
-
-  Matrix3D<double> sum(dims[0], dims[1], dims[2]);
-  for (int i = 0; i < dims[0]; i++)
-    for (int j = 0; j < dims[1]; j++)
-      for (int k = 0; k < dims[2]; k++)
-        sum(i, j, k) = matrix1(i, j, k) + matrix2(i, j, k);
-
-  return sum;
-}
-
+	Afterwards there is no link between the two matrices, the data
+	is copied by value. In other wards, the returned matrix is not
+	a "view" on the matrix passed in the argument.
+*/
 template <typename T>
 Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
                   const int *top_left_corner) {
@@ -148,6 +168,16 @@ Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
   return data;
 }
 
+/*
+	Send the given matrix to the process whose rank (in the given
+	communicator) is 'send_to'. The communication happens using the
+	given tag (which must be already known to the receiver).
+
+	The dimension of the matrix must be such that
+		dim1*dim2*dim3 = n_cells
+	if 'n_cells != -1'. If 'n_cells == -1' the dimension of the matrix
+	is computed in the function.
+*/
 void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
                  const MPI_Comm &comm, int n_cells, MPI_Request *req) {
   if (n_cells == -1)
@@ -162,6 +192,16 @@ void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
   MPI_Isend(matrix.data(), n_cells, MPI_DOUBLE, send_to, tag, comm, req);
 }
 
+/*
+	Split the given matrix(es) in blocks (using the given dimension) along the
+	3 axes. Then send it to the appropriate processes using the given
+	(cartesian) communicator. The position of the process which receives a
+	certain block is determined by its position in the virtual topology. This
+	is also useful in order to reconstruct the matrix afterwards.
+
+	Each matrix is sent with the corresponding tag in 'tags'. Therefore the size
+	of the vectors 'tags' and 'matrices' must coincide.
+*/
 void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
                       const std::vector<int> &tags, const int *block_size,
                       const MPI_Comm &comm) {
@@ -224,8 +264,8 @@ void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
 
 /*
         Receive a vector of matrices from sending_process. The number
-        of expected matrices is equal to the number of tags. This
-        function is blocking.
+        of expected matrices is equal to the number of tags. Note that
+	this function is blocking.
 */
 std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
                                              const MPI_Comm &comm,
@@ -245,9 +285,12 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
 }
 
 /*
-        Receives asynchronously blocks from the processes and composes
-        the complete matrix. This is a blocking function since it waits
-        for the reception of all the pieces.
+        Receives asynchronously a set of blocks from the processes using the
+	given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
+        use them to reconstruct the complete matrix, mapping the position of the
+	block in the complete matrix as a function of the position of the sending
+	processor in the virtual topology. This is a blocking function since it waits
+        for the reception of all the pieces, and then composes the matrix.
 */
 void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
                             const MPI_Comm &comm) {
