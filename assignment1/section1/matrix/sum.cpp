@@ -148,8 +148,8 @@ Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
   return data;
 }
 
-void send_matrix(Matrix3D<double> &matrix, int send_to, int tag, MPI_Comm comm,
-                 int n_cells, MPI_Request *req) {
+void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
+                 const MPI_Comm &comm, int n_cells, MPI_Request *req) {
   if (n_cells == -1)
     n_cells = matrix.dim(0) * matrix.dim(1) * matrix.dim(2);
 
@@ -162,9 +162,9 @@ void send_matrix(Matrix3D<double> &matrix, int send_to, int tag, MPI_Comm comm,
   MPI_Isend(matrix.data(), n_cells, MPI_DOUBLE, send_to, tag, comm, req);
 }
 
-void blockify_and_msg(std::vector<Matrix3D<double>> &matrices,
-                      std::vector<int> &tags, const int *block_size,
-                      const MPI_Comm comm) {
+void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
+                      const std::vector<int> &tags, const int *block_size,
+                      const MPI_Comm &comm) {
 #ifdef DEBUG
   std::cout << "blockify_and_msg called" << std::endl;
 #endif
@@ -228,9 +228,9 @@ void blockify_and_msg(std::vector<Matrix3D<double>> &matrices,
         function is blocking.
 */
 std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
-                                             const MPI_Comm comm,
-                                             int sending_process,
-                                             std::vector<int> tags) {
+                                             const MPI_Comm &comm,
+                                             const int sending_process,
+                                             const std::vector<int> tags) {
   int matrix_n_cells = matrix_size[0] * matrix_size[1] * matrix_size[2];
 
   std::vector<Matrix3D<double>> matrices;
@@ -250,7 +250,7 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
         for the reception of all the pieces.
 */
 void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
-                            const MPI_Comm comm) {
+                            const MPI_Comm &comm) {
   int block_n_cells = block_size[0] * block_size[1] * block_size[2];
 
   int size;
@@ -407,7 +407,7 @@ int main(int argc, char **argv) {
     Matrix3D<double> matrix2 =
         random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2], ran);
 #ifdef DEBUG
-std::cout << matrix1 << std::endl;
+    std::cout << matrix1 << std::endl;
     std::cout << matrix2 << std::endl;
 #endif
 
