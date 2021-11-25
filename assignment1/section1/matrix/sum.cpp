@@ -53,7 +53,9 @@ public:
   Matrix3D &operator=(const Matrix3D &) = delete;
 
   ~Matrix3D() {
+#ifdef DEBUG
     std::cout << "destructor called on address " << elem << std::endl;
+#endif
     delete[] elem;
   }
 
@@ -97,13 +99,13 @@ std::ostream &operator<<(std::ostream &os, const Matrix3D<T> &p) {
   os << "Shape=(" << p.dim(0) << ", " << p.dim(1) << ", " << p.dim(2) << ")"
      << std::endl;
   for (int i = 0; i < p.dim(0); ++i) {
-    std::cout << "Slice N. " << i << std::endl;
+    os << "Slice N. " << i << std::endl;
     for (int j = 0; j < p.dim(1); ++j) {
       for (int k = 0; k < p.dim(2); ++k)
-        std::cout << p(i, j, k) << " ";
-      std::cout << std::endl;
+        os << p(i, j, k) << " ";
+      os << std::endl;
     }
-    std::cout << std::endl;
+    os << std::endl;
   }
   return os;
 }
@@ -329,6 +331,8 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
+  double start_time = MPI_Wtime();
+
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
@@ -390,19 +394,22 @@ int main(int argc, char **argv) {
 
   std::vector<int> tags{BLOCK_1_TAG, BLOCK_2_TAG};
   if (rank == 0) {
+#ifdef DEBUG
     for (int i = 0; i < 3; i++)
       std::cout << "Matrix.shape[" << i << "] = " << matrix_size[i]
                 << std::endl;
+#endif
 
     std::default_random_engine ran{};
 
     Matrix3D<double> matrix1 =
         random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2], ran);
-    std::cout << matrix1 << std::endl;
-
     Matrix3D<double> matrix2 =
         random_3d_matrix(matrix_size[0], matrix_size[1], matrix_size[2], ran);
+#ifdef DEBUG
+std::cout << matrix1 << std::endl;
     std::cout << matrix2 << std::endl;
+#endif
 
     std::vector<Matrix3D<double>> matrices;
     matrices.push_back(std::move(matrix1));
@@ -440,7 +447,12 @@ int main(int argc, char **argv) {
   if (rank == 0) {
     Matrix3D<double> result(matrix_size[0], matrix_size[1], matrix_size[2]);
     receive_compose_matrix(result, blocks_size, cartesian_communicator);
+
+#ifdef DEBUG
     std::cout << "Result ------------------------" << std::endl << result;
+#endif
+
+    std::cout << MPI_Wtime() - start_time << std::endl;
   }
 
   MPI_Finalize();
