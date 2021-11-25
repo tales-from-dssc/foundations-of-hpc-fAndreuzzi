@@ -11,39 +11,6 @@
 #define BLOCK_SUM_TAG 2
 
 /*
-	Generate a random 3D matrix of doubles using the given random
-	engine.
-*/
-Matrix3D<double> random_3d_matrix(int dim1, int dim2, int dim3,
-                                  std::default_random_engine &ran) {
-  Matrix3D<double> m(dim1, dim2, dim3);
-
-  std::uniform_real_distribution<> ureal{-10, 10};
-  for (int i = 0; i < dim1; ++i)
-    for (int j = 0; j < dim2; ++j)
-      for (int k = 0; k < dim3; ++k)
-        m(i, j, k) = ureal(ran);
-
-  return m;
-}
-
-template <typename T>
-std::ostream &operator<<(std::ostream &os, const Matrix3D<T> &p) {
-  os << "Shape=(" << p.dim(0) << ", " << p.dim(1) << ", " << p.dim(2) << ")"
-     << std::endl;
-  for (int i = 0; i < p.dim(0); ++i) {
-    os << "Slice N. " << i << std::endl;
-    for (int j = 0; j < p.dim(1); ++j) {
-      for (int k = 0; k < p.dim(2); ++k)
-        os << p(i, j, k) << " ";
-      os << std::endl;
-    }
-    os << std::endl;
-  }
-  return os;
-}
-
-/*
 	Extract a block of the given size starting from the given top
 	left corner from the given matrix, and return it as a new 3D
 	matrix.
