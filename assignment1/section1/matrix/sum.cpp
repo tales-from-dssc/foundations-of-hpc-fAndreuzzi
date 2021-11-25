@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <random>
 #include <stdexcept>
+#include <type_traits>
 #include <unistd.h>
 #include <vector>
 
@@ -82,11 +83,33 @@ public:
     }
   }
 
-  const T operator()(int i, int j, int k) const {
+  template <typename U = T>
+  const std::enable_if_t<std::is_pointer<U>::value, T> operator()(int i, int j,
+                                                                  int k) const {
     return elem[map_3D_to_1D(i, j, k)];
   }
 
-  T &operator()(int i, int j, int k) { return elem[map_3D_to_1D(i, j, k)]; }
+  template <typename U = T>
+  const std::enable_if_t<!std::is_pointer<U>::value, T>
+  operator()(int i, int j, int k) const {
+    return elem[map_3D_to_1D(i, j, k)];
+  }
+
+  template <typename U = T>
+  std::enable_if_t<std::is_pointer<U>::value, T &> operator()(int i, int j,
+                                                              int k) {
+    return elem[map_3D_to_1D(i, j, k)];
+  }
+
+  template <typename U = T>
+  std::enable_if_t<!std::is_pointer<U>::value, T &> operator()(int i, int j,
+                                                               int k) {
+    return elem[map_3D_to_1D(i, j, k)];
+  }
+
+  T *access_pointer(int i, int j, int k) {
+    return elem + map_3D_to_1D(i, j, k);
+  }
 
   T *data() { return elem; }
 
@@ -107,8 +130,8 @@ public:
 };
 
 /*
-	Generate a random 3D matrix of doubles using the given random
-	engine.
+        Generate a random 3D matrix of doubles using the given random
+        engine.
 */
 Matrix3D<double> random_3d_matrix(int dim1, int dim2, int dim3,
                                   std::default_random_engine &ran) {
@@ -124,7 +147,25 @@ Matrix3D<double> random_3d_matrix(int dim1, int dim2, int dim3,
 }
 
 template <typename T>
-std::ostream &operator<<(std::ostream &os, const Matrix3D<T> &p) {
+const std::enable_if_t<std::is_pointer<T>::value, std::ostream &>
+operator<<(std::ostream &os, const Matrix3D<T> &p) {
+  os << "Shape=(" << p.dim(0) << ", " << p.dim(1) << ", " << p.dim(2) << ")"
+     << std::endl;
+  for (int i = 0; i < p.dim(0); ++i) {
+    os << "Slice N. " << i << std::endl;
+    for (int j = 0; j < p.dim(1); ++j) {
+      for (int k = 0; k < p.dim(2); ++k)
+        os << *p(i, j, k) << " [" << p(i, j, k) << "] ";
+      os << std::endl;
+    }
+    os << std::endl;
+  }
+  return os;
+}
+
+template <typename T>
+const std::enable_if_t<!std::is_pointer<T>::value, std::ostream &>
+operator<<(std::ostream &os, const Matrix3D<T> &p) {
   os << "Shape=(" << p.dim(0) << ", " << p.dim(1) << ", " << p.dim(2) << ")"
      << std::endl;
   for (int i = 0; i < p.dim(0); ++i) {
@@ -140,13 +181,13 @@ std::ostream &operator<<(std::ostream &os, const Matrix3D<T> &p) {
 }
 
 /*
-	Extract a block of the given size starting from the given top
-	left corner from the given matrix, and return it as a new 3D
-	matrix.
+        Extract a block of the given size starting from the given top
+        left corner from the given matrix, and return it as a new 3D
+        matrix.
 
-	Afterwards there is no link between the two matrices, the data
-	is copied by value. In other wards, the returned matrix is not
-	a "view" on the matrix passed in the argument.
+        Afterwards there is no link between the two matrices, the data
+        is copied by value. In other wards, the returned matrix is not
+        a "view" on the matrix passed in the argument.
 */
 template <typename T>
 Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
@@ -168,15 +209,35 @@ Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
   return data;
 }
 
-/*
-	Send the given matrix to the process whose rank (in the given
-	communicator) is 'send_to'. The communication happens using the
-	given tag (which must be already known to the receiver).
+template <typename T>
+Matrix3D<T *> pointer_block(Matrix3D<T> &matrix, const int *block_size,
+                            const int *top_left_corner) {
+  Matrix3D<T *> data(block_size[0], block_size[1], block_size[2]);
 
-	The dimension of the matrix must be such that
-		dim1*dim2*dim3 = n_cells
-	if 'n_cells != -1'. If 'n_cells == -1' the dimension of the matrix
-	is computed in the function.
+  int slice, row, column;
+  for (int i = 0; i < block_size[0]; i++) {
+    slice = top_left_corner[0] + i;
+    for (int j = 0; j < block_size[1]; j++) {
+      row = top_left_corner[1] + j;
+      for (int k = 0; k < block_size[2]; k++) {
+        column = top_left_corner[2] + k;
+        data(i, j, k) = matrix.access_pointer(slice, row, column);
+      }
+    }
+  }
+
+  return data;
+}
+
+/*
+        Send the given matrix to the process whose rank (in the given
+        communicator) is 'send_to'. The communication happens using the
+        given tag (which must be already known to the receiver).
+
+        The dimension of the matrix must be such that
+                dim1*dim2*dim3 = n_cells
+        if 'n_cells != -1'. If 'n_cells == -1' the dimension of the matrix
+        is computed in the function.
 */
 void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
                  const MPI_Comm &comm, int n_cells, MPI_Request *req) {
@@ -193,14 +254,14 @@ void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
 }
 
 /*
-	Split the given matrix(es) in blocks (using the given dimension) along the
-	3 axes. Then send it to the appropriate processes using the given
-	(cartesian) communicator. The position of the process which receives a
-	certain block is determined by its position in the virtual topology. This
-	is also useful in order to reconstruct the matrix afterwards.
+        Split the given matrix(es) in blocks (using the given dimension) along
+   the 3 axes. Then send it to the appropriate processes using the given
+        (cartesian) communicator. The position of the process which receives a
+        certain block is determined by its position in the virtual topology.
+   This is also useful in order to reconstruct the matrix afterwards.
 
-	Each matrix is sent with the corresponding tag in 'tags'. Therefore the size
-	of the vectors 'tags' and 'matrices' must coincide.
+        Each matrix is sent with the corresponding tag in 'tags'. Therefore the
+   size of the vectors 'tags' and 'matrices' must coincide.
 */
 void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
                       const std::vector<int> &tags, const int *block_size,
@@ -265,7 +326,7 @@ void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
 /*
         Receive a vector of matrices from sending_process. The number
         of expected matrices is equal to the number of tags. Note that
-	this function is blocking.
+        this function is blocking.
 */
 std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
                                              const MPI_Comm &comm,
@@ -286,11 +347,11 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
 
 /*
         Receives asynchronously a set of blocks from the processes using the
-	given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
+        given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
         use them to reconstruct the complete matrix, mapping the position of the
-	block in the complete matrix as a function of the position of the sending
-	processor in the virtual topology. This is a blocking function since it waits
-        for the reception of all the pieces, and then composes the matrix.
+        block in the complete matrix as a function of the position of the
+   sending processor in the virtual topology. This is a blocking function since
+   it waits for the reception of all the pieces, and then composes the matrix.
 */
 void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
                             const MPI_Comm &comm) {
@@ -300,10 +361,15 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Request *requests = new MPI_Request[size];
 
-  std::vector<Matrix3D<double>> blocks;
+#ifdef USE_POINTER_MATRIX
+  Matrix3D<double *> *blocks = new Matrix3D<double *>[size];
+#else
+  Matrix3D<double> blocks = new Matrix3D<double>[size];
+#endif
+
   // each block is sent by a particular rank, we hold the rank
   // corresponding to each block in this vector
-  std::vector<int> blocks_associated_rank;
+  int blocks_associated_rank = new int[size];
 
   int top_left_corner[3];
   int process_coords[3];
@@ -325,11 +391,16 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
            ++process_coords[2]) {
         top_left_corner[2] = process_coords[2] * block_size[2];
 
-        blocks.push_back(std::move(block(dest, block_size, top_left_corner)));
+#ifdef USE_POINTER_MATRIX
+        blocks[block_idx] = pointer_block(dest, block_size, top_left_corner));
+#else
+        blocks[block_idx] = block(dest, block_size, top_left_corner));
+#endif
 
         MPI_Cart_rank(comm, process_coords, &receive_from);
-        blocks_associated_rank.push_back(receive_from);
-        MPI_Irecv(blocks.at(block_idx).data(), block_n_cells, MPI_DOUBLE,
+        blocks_associated_rank[i] = receive_from;
+
+        MPI_Irecv(blocks[block_idx].data(), block_n_cells, MPI_DOUBLE,
                   receive_from, BLOCK_SUM_TAG, comm, &requests[block_idx]);
 
         block_idx++;
@@ -353,9 +424,12 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
   std::cout << "Everyone sent the sum!" << std::endl;
 #endif
 
+#ifdef USE_POINTER_MATRIX
+#else
   int upper_left_coords[3];
   for (int i = 0; i < block_idx; i++) {
     Matrix3D<double> block = std::move(blocks.at(i));
+
     MPI_Cart_coords(comm, blocks_associated_rank.at(i), 3, process_coords);
     // compute the position of the upper left corner of the block in dest
     for (int w = 0; w < 3; w++)
@@ -369,6 +443,10 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
       }
     }
   }
+#endif
+
+  delete[] blocks;
+  delete[] blocks_associated_rank;
 }
 
 int main(int argc, char **argv) {
