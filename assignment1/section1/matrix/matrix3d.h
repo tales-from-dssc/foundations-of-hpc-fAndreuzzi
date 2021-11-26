@@ -20,6 +20,8 @@ template <typename T> class Matrix3D {
   }
 
 public:
+  Matrix3D() : dim1(0), dim2(0), dim3(0), size(0), elem(nullptr) {}
+
   Matrix3D(const int dim1, const int dim2, const int dim3) {
     this->dim1 = dim1;
     this->dim2 = dim2;
@@ -29,7 +31,7 @@ public:
     elem = new T[dim1 * dim2 * dim3];
   }
 
-  Matrix3D(const int *ds) { Matrix3D(ds[0], ds[1], ds[2]); }
+  Matrix3D(const int *ds) : Matrix3D(ds[0], ds[1], ds[2]) {}
 
   Matrix3D(const int dim1, const int dim2, const int dim3, T *data) {
     this->dim1 = dim1;
@@ -40,7 +42,7 @@ public:
     elem = data;
   }
 
-  Matrix3D(const int *ds, T *data) { Matrix3D(ds[0], ds[1], ds[2], data); }
+  Matrix3D(const int *ds, T *data) : Matrix3D(ds[0], ds[1], ds[2], data) {}
 
   Matrix3D(Matrix3D &&that) {
     dim1 = that.dim1;
@@ -77,6 +79,8 @@ public:
     delete[] elem;
   }
 
+  void unbind_data() { elem = nullptr; }
+
   // access the shape of this matrix
   int dim(int i) const {
     switch (i) {
@@ -101,7 +105,7 @@ public:
 
   T *data() { return elem; }
 
-  Matrix3D<double> operator+(const Matrix3D<double> &matrix2) {
+  Matrix3D<double> operator+(const Matrix3D<double> &matrix2) const {
     if (dim(0) != matrix2.dim(0) || dim(1) != matrix2.dim(1) ||
         dim(2) != matrix2.dim(2))
       throw std::invalid_argument(
