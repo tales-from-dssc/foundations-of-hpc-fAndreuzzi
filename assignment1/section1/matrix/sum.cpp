@@ -133,13 +133,11 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
                                              const MPI_Comm &comm,
                                              const int sending_process,
                                              const std::vector<int> tags) {
-  int matrix_n_cells = matrix_size[0] * matrix_size[1] * matrix_size[2];
-
   std::vector<Matrix3D<double>> matrices;
   for (int i = 0; i < tags.size(); i++) {
     Matrix3D<double> m(matrix_size[0], matrix_size[1], matrix_size[2]);
     MPI_Status status;
-    MPI_Recv(m.data(), matrix_n_cells, MPI_DOUBLE, sending_process, tags.at(i),
+    MPI_Recv(m.data(), m.get_size(), MPI_DOUBLE, sending_process, tags.at(i),
              comm, &status);
     matrices.push_back(std::move(m));
   }
