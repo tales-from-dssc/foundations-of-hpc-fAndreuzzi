@@ -1,5 +1,5 @@
-#include <random>
 #include <iostream>
+#include <random>
 
 /*
         A wrapper of an array of T (allocated on the free store)
@@ -13,6 +13,7 @@
 template <typename T> class Matrix3D {
   T *elem;
   int dim1, dim2, dim3;
+  int size;
 
   inline int map_3D_to_1D(int i, int j, int k) const {
     return k + j * dim3 + i * dim2 * dim3;
@@ -23,6 +24,7 @@ public:
     this->dim1 = dim1;
     this->dim2 = dim2;
     this->dim3 = dim3;
+    this->size = dim1 * dim2 * dim3;
 
     elem = new T[dim1 * dim2 * dim3];
   }
@@ -31,6 +33,7 @@ public:
     dim1 = that.dim1;
     dim2 = that.dim2;
     dim3 = that.dim3;
+    size = that.size;
 
     elem = that.elem;
     that.elem = nullptr;
@@ -45,6 +48,7 @@ public:
     dim1 = that.dim1;
     dim2 = that.dim2;
     dim3 = that.dim3;
+    size = that.size;
 
     return *this;
   }
@@ -73,6 +77,8 @@ public:
       return -1;
     }
   }
+
+  const int get_size() const { return size; }
 
   const T operator()(int i, int j, int k) const {
     return elem[map_3D_to_1D(i, j, k)];

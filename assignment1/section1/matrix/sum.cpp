@@ -1,5 +1,5 @@
-#include <iostream>
 #include "matrix3d.h"
+#include <iostream>
 #include <mpi.h>
 #include <random>
 #include <stdexcept>
@@ -11,13 +11,13 @@
 #define BLOCK_SUM_TAG 2
 
 /*
-	Extract a block of the given size starting from the given top
-	left corner from the given matrix, and return it as a new 3D
-	matrix.
+        Extract a block of the given size starting from the given top
+        left corner from the given matrix, and return it as a new 3D
+        matrix.
 
-	Afterwards there is no link between the two matrices, the data
-	is copied by value. In other wards, the returned matrix is not
-	a "view" on the matrix passed in the argument.
+        Afterwards there is no link between the two matrices, the data
+        is copied by value. In other wards, the returned matrix is not
+        a "view" on the matrix passed in the argument.
 */
 template <typename T>
 Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
@@ -40,38 +40,31 @@ Matrix3D<T> block(const Matrix3D<T> &matrix, const int *block_size,
 }
 
 /*
-	Send the given matrix to the process whose rank (in the given
-	communicator) is 'send_to'. The communication happens using the
-	given tag (which must be already known to the receiver).
-
-	The dimension of the matrix must be such that
-		dim1*dim2*dim3 = n_cells
-	if 'n_cells != -1'. If 'n_cells == -1' the dimension of the matrix
-	is computed in the function.
+        Send the given matrix to the process whose rank (in the given
+        communicator) is 'send_to'. The communication happens using the
+        given tag (which must be already known to the receiver).
 */
 void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
-                 const MPI_Comm &comm, int n_cells, MPI_Request *req) {
-  if (n_cells == -1)
-    n_cells = matrix.dim(0) * matrix.dim(1) * matrix.dim(2);
-
+                 const MPI_Comm &comm, MPI_Request *req) {
 #ifdef DEBUG
   std::cout << "Sending to " << send_to << " (address=" << matrix.data() << ")"
             << std::endl;
   std::cout << matrix << std::endl;
 #endif
 
-  MPI_Isend(matrix.data(), n_cells, MPI_DOUBLE, send_to, tag, comm, req);
+  MPI_Isend(matrix.data(), matrix.get_size(), MPI_DOUBLE, send_to, tag, comm,
+            req);
 }
 
 /*
-	Split the given matrix(es) in blocks (using the given dimension) along the
-	3 axes. Then send it to the appropriate processes using the given
-	(cartesian) communicator. The position of the process which receives a
-	certain block is determined by its position in the virtual topology. This
-	is also useful in order to reconstruct the matrix afterwards.
+        Split the given matrix(es) in blocks (using the given dimension) along
+   the 3 axes. Then send it to the appropriate processes using the given
+        (cartesian) communicator. The position of the process which receives a
+        certain block is determined by its position in the virtual topology.
+   This is also useful in order to reconstruct the matrix afterwards.
 
-	Each matrix is sent with the corresponding tag in 'tags'. Therefore the size
-	of the vectors 'tags' and 'matrices' must coincide.
+        Each matrix is sent with the corresponding tag in 'tags'. Therefore the
+   size of the vectors 'tags' and 'matrices' must coincide.
 */
 void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
                       const std::vector<int> &tags, const int *block_size,
@@ -81,8 +74,6 @@ void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
 #endif
   if (matrices.size() != tags.size())
     throw std::invalid_argument("n. of matrices != n. of tags");
-
-  int block_n_cells = block_size[0] * block_size[1] * block_size[2];
 
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -120,7 +111,7 @@ void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
           sent_blocks.push_back(
               block(matrices.at(w), block_size, top_left_corner));
           send_matrix(sent_blocks.at(block_idx), send_to, tags.at(w), comm,
-                      block_n_cells, &requests[block_idx]);
+                      &requests[block_idx]);
           block_idx++;
         }
       }
@@ -136,7 +127,7 @@ void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
 /*
         Receive a vector of matrices from sending_process. The number
         of expected matrices is equal to the number of tags. Note that
-	this function is blocking.
+        this function is blocking.
 */
 std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
                                              const MPI_Comm &comm,
@@ -157,11 +148,11 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
 
 /*
         Receives asynchronously a set of blocks from the processes using the
-	given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
+        given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
         use them to reconstruct the complete matrix, mapping the position of the
-	block in the complete matrix as a function of the position of the sending
-	processor in the virtual topology. This is a blocking function since it waits
-        for the reception of all the pieces, and then composes the matrix.
+        block in the complete matrix as a function of the position of the
+   sending processor in the virtual topology. This is a blocking function since
+   it waits for the reception of all the pieces, and then composes the matrix.
 */
 void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
                             const MPI_Comm &comm) {
@@ -355,7 +346,7 @@ int main(int argc, char **argv) {
   MPI_Request send_req;
 
   Matrix3D<double> summed_block = blks.at(0) + blks.at(1);
-  send_matrix(summed_block, 0, BLOCK_SUM_TAG, cartesian_communicator, -1,
+  send_matrix(summed_block, 0, BLOCK_SUM_TAG, cartesian_communicator,
               &send_req);
 
   if (rank == 0) {
