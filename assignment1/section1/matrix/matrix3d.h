@@ -22,17 +22,6 @@ template <typename T> class Matrix3D {
 public:
   Matrix3D() : dim1(0), dim2(0), dim3(0), size(0), elem(nullptr) {}
 
-  Matrix3D(const int dim1, const int dim2, const int dim3) {
-    this->dim1 = dim1;
-    this->dim2 = dim2;
-    this->dim3 = dim3;
-    this->size = dim1 * dim2 * dim3;
-
-    elem = new T[dim1 * dim2 * dim3];
-  }
-
-  Matrix3D(const int *ds) : Matrix3D(ds[0], ds[1], ds[2]) {}
-
   Matrix3D(const int dim1, const int dim2, const int dim3, T *data) {
     this->dim1 = dim1;
     this->dim2 = dim2;
@@ -42,15 +31,15 @@ public:
     elem = data;
   }
 
+  Matrix3D(const int dim1, const int dim2, const int dim3)
+      : Matrix3D(dim1, dim2, dim3, new T[dim1 * dim2 * dim3]) {}
+
+  Matrix3D(const int *ds) : Matrix3D(ds[0], ds[1], ds[2]) {}
+
   Matrix3D(const int *ds, T *data) : Matrix3D(ds[0], ds[1], ds[2], data) {}
 
-  Matrix3D(Matrix3D &&that) {
-    dim1 = that.dim1;
-    dim2 = that.dim2;
-    dim3 = that.dim3;
-    size = that.size;
-
-    elem = that.elem;
+  Matrix3D(Matrix3D &&that)
+      : Matrix3D(that.dim1, that.dim2, that.dim3, that.elem) {
     that.elem = nullptr;
   }
 
