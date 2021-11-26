@@ -234,7 +234,7 @@ void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
-  double start_time = MPI_Wtime();
+  double start_time;
 
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -317,6 +317,11 @@ int main(int argc, char **argv) {
     std::vector<Matrix3D<double>> matrices;
     matrices.push_back(std::move(matrix1));
     matrices.push_back(std::move(matrix2));
+
+    // after generating the matrices (and before communicating them to the
+    // other processes) we take the starting time
+    start_time = MPI_Wtime();
+
     blockify_and_msg(matrices, tags, blocks_size, cartesian_communicator);
   }
 
