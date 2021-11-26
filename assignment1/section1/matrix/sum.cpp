@@ -58,13 +58,13 @@ void send_matrix(Matrix3D<double> &matrix, const int send_to, const int tag,
 
 /*
         Split the given matrix(es) in blocks (using the given dimension) along
-   the 3 axes. Then send it to the appropriate processes using the given
+        the 3 axes. Then send it to the appropriate processes using the given
         (cartesian) communicator. The position of the process which receives a
         certain block is determined by its position in the virtual topology.
-   This is also useful in order to reconstruct the matrix afterwards.
+        This is also useful in order to reconstruct the matrix afterwards.
 
         Each matrix is sent with the corresponding tag in 'tags'. Therefore the
-   size of the vectors 'tags' and 'matrices' must coincide.
+        size of the vectors 'tags' and 'matrices' must coincide.
 */
 void blockify_and_msg(const std::vector<Matrix3D<double>> &matrices,
                       const std::vector<int> &tags, const int *block_size,
@@ -149,8 +149,9 @@ std::vector<Matrix3D<double>> receive_matrix(const int *matrix_size,
         given cartesian communicator (the expected tag is BLOCK_SUM_TAG). Then
         use them to reconstruct the complete matrix, mapping the position of the
         block in the complete matrix as a function of the position of the
-   sending processor in the virtual topology. This is a blocking function since
-   it waits for the reception of all the pieces, and then composes the matrix.
+        sending processor in the virtual topology. This is a blocking function
+        since it waits for the reception of all the pieces, and then composes
+        the matrix.
 */
 void receive_compose_matrix(Matrix3D<double> &dest, const int *block_size,
                             const MPI_Comm &comm) {
