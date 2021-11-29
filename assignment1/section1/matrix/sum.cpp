@@ -1,4 +1,5 @@
 #include "matrix3d.h"
+#include "processor_utils.h"
 #include <iostream>
 #include <mpi.h>
 #include <random>
@@ -243,54 +244,30 @@ int main(int argc, char **argv) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  int matrix_size[3];
-  int blocks_size[3];
-  // number of blocks along the axis
-  int n_blocks[3];
-  int expected_size, residual = 0;
-  for (int i = 0; i < 3; i++) {
-    matrix_size[i] = atoi(argv[i + 1]);
-    blocks_size[i] = atoi(argv[3 + i + 1]);
-    // if the dimension of the blocks is not covering the matrix exactly on
-    // the axis we augment the dimension along that axis
-    n_blocks[i] = matrix_size[i] / blocks_size[i];
-
-    residual = matrix_size[i] % blocks_size[i];
-
-    matrix_size[i] += (residual != 0) * (blocks_size[i] - residual);
-    n_blocks[i] += (residual != 0) * 1;
-#ifdef DEBUG
-    if (rank == 0 && residual != 0)
-      std::cout << "Matrix augmented by " << blocks_size[i] - residual
-                << " cells along the " << i << "-th axis ("
-                << matrix_size[i] - (blocks_size[i] - residual) << "->"
-                << matrix_size[i] << ")" << std::endl;
-#endif
+  // size of the cartesian grid along the three dimensions
+  int decomposition_processors_count[3];
+  int product = 1;
+  for (int i = 4; i < argc; i++) {
+    decomposition_processors_count[i - 4] = atoi(argv[i]);
+    product *= decomposition_processors_count[i - 4];
   }
 
-  MPI_Comm comm = MPI_COMM_WORLD;
-  int expected_n_processes = n_blocks[0] * n_blocks[1] * n_blocks[2];
-  if (expected_n_processes > size) {
+#ifdef ENFORCE_24
+  if (product != 24) {
     if (rank == 0)
-      std::cout << "Invalid number of MPI processes, expected "
-                << expected_n_processes << ", found " << size << std::endl;
+      std::cout << "Invalid size of cartesian grid, the given grid contains "
+                << product << " processes instead of 24" << std::endl;
     MPI_Finalize();
     return 1;
-  } else if (expected_n_processes < size) {
-    // we drop unneeded processes
-    MPI_Comm_split(MPI_COMM_WORLD, rank < expected_n_processes, 0, &comm);
-
-    if (rank == 0) {
-      std::cout << "Dropped " << size - expected_n_processes
-                << " process due to the dimension of the blocks" << std::endl;
-    }
-
-    if (rank >= expected_n_processes) {
-      std::cout << "Process " << rank << " is going to sleep" << std::endl;
-      MPI_Finalize();
-      return 0;
-    }
   }
+#endif
+
+  int matrix_size[3];
+  int blocks_size[3];
+  determine_block_size(argv, decomposition_processors_count, matrix_size,
+                       blocks_size);
+
+  MPI_Comm comm = MPI_COMM_WORLD;
 
 #ifdef MPI_DEBUG
   if (rank == 0) {
@@ -305,20 +282,10 @@ int main(int argc, char **argv) {
   }
 #endif
 
-  int processors_distribution[3];
-  for (int i = 0; i < 3; i++)
-    processors_distribution[i] = matrix_size[i] / blocks_size[i];
-#ifdef DEBUG
-  if (rank == 0)
-    std::cout << "Processor distribution: " << processors_distribution[0]
-              << ", " << processors_distribution[1] << ", "
-              << processors_distribution[2] << std::endl;
-#endif
-
   int periodic[]{0, 0, 0};
   int reorder = 1;
   MPI_Comm cartesian_communicator;
-  MPI_Cart_create(comm, 3, processors_distribution, periodic, reorder,
+  MPI_Cart_create(comm, 3, decomposition_processors_count, periodic, reorder,
                   &cartesian_communicator);
 
   MPI_Comm_rank(cartesian_communicator, &rank);
