@@ -4,7 +4,7 @@
    represent the number of processors along the given axis. matrix_size and
    block_size are 3-arrays to be filled by the function determine_block_size.
 */
-void determine_block_size(char **argv,
+void determine_block_size(int rank, char **argv,
                           const int *decomposition_processors_count,
                           int *matrix_size, int *blocks_size) {
   // number of blocks along the axis

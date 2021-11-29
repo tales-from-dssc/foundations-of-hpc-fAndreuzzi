@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
 
   int matrix_size[3];
   int blocks_size[3];
-  determine_block_size(argv, decomposition_processors_count, matrix_size,
+  determine_block_size(rank, argv, decomposition_processors_count, matrix_size,
                        blocks_size);
 
   MPI_Comm comm = MPI_COMM_WORLD;
