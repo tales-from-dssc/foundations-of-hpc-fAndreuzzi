@@ -224,15 +224,13 @@ int main(int argc, char **argv) {
     product *= decomposition_processors_count[i - 4];
   }
 
-#ifdef ENFORCE_24
-  if (product != 24) {
+  if (product != size) {
     if (rank == 0)
       std::cout << "Invalid size of cartesian grid, the given grid contains "
-                << product << " processes instead of 24" << std::endl;
+                << product << " processes instead of " << size << std::endl;
     MPI_Finalize();
     return 1;
   }
-#endif
 
 #ifdef MPI_DEBUG
   if (rank == 0) {
