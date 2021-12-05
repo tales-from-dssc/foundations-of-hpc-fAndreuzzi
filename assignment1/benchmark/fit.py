@@ -7,6 +7,12 @@ def func(x, lat, band):
     return lat*1.e-6 + x / band
 
 n1 = np.load('../benchmark/results/{}_{}_{}_{}.npy'.format(*sys.argv[1:5]))
+# we group by packet size
+n1 = n1[np.argsort(n1[:,0])]
+n1 = np.array(np.split(n1, 30, axis=0))
+# we take the mean on each sub-matrix
+n1 = np.mean(n1, axis=1)
+
 n1[:,0] *= pow(2,-20)
 n1[:,2] *= 1.e-6
 
