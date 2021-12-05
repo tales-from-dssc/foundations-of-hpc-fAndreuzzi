@@ -14,7 +14,7 @@ def latband(filename):
 	print('python3 fit.py ' + label)
 
 	for word in sys.argv[1:]:
-		if not word in label:
+		if not word in label or ('n'+word) in label: # we also consider intel/nintel and gpu/ngpu
 			print('\tDoes not contain ' + word)
 			return None
 
@@ -42,6 +42,9 @@ plt.ylabel('Mbytes/s')
 
 for i, txt in enumerate(labels):
 	plt.annotate(txt, (lat[i], band[i]))
+
+plt.yscale('log')
+plt.xscale('log')
 
 plt.grid()
 plt.show()
