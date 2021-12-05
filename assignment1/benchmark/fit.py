@@ -1,4 +1,5 @@
 import numpy as np
+from math import log2
 import matplotlib.pyplot as plt
 import sys
 from scipy.optimize import curve_fit
@@ -35,7 +36,7 @@ if len(sys.argv) == 6 and sys.argv[5] == '1':
 	l1, = plt.plot(n1[:,0], func(n1[:,0], fit_lat, fit_band), 'ro-')
 
 	plt.ylabel('$\mu$s')
-	plt.xlabel('')
+	plt.xlabel('MBytes')
 	plt.xscale('log')
 	plt.yscale('log')
 
@@ -44,5 +45,7 @@ if len(sys.argv) == 6 and sys.argv[5] == '1':
 	plt.legend([l1, l2], ['Fit', 'Measured'])
 	plt.title(' '.join(sys.argv[1:5]))
 	plt.grid()
+
+	plt.xticks(n1[:,0][1::3], ['$2^{{{}}}$'.format(int(log2(n))) for n in n1[:,0][1::3]])
 
 	plt.show()
