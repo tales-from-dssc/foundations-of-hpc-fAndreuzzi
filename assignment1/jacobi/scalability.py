@@ -22,7 +22,9 @@ elif sys.argv[1] == 'twonodes':
 	fourth = sys.argv[2]
 	third = 'socket'
 
-result = Popen('python3 ../benchmark/fit.py nintel infiniband {} {}'.format(third, fourth), shell=True, stdout=PIPE, stderr=PIPE)
+cmd = 'python3 ../benchmark/fit.py nintel infiniband {} {}'.format(third, fourth)
+print(cmd)
+result = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 output = iter(result.stdout.readline, b'')
 
 buff = []
@@ -44,7 +46,7 @@ for dt in data:
 	Tc = c / bandwidth + k * latency
 	N = np.product(dt[0,:3])
 
-	print(k,c,Tc,N)
+	print('k: {}, c: {}, Tc: {}, N: {}'.format(k, c, Tc, N))
 	PLN.append([estimate_pln(dt[1:,2], Tc, N), estimate_pln(dt[1:,3], Tc, N)])
 PLN = np.array(PLN)
 
@@ -56,9 +58,12 @@ for idx,i in enumerate(nprocs):
 	print(PLN[idx,1])
 
 if len(sys.argv) == 4 and sys.argv[3] == '1':
+	measured_mlup = np.array(data)[:,2:-2,-1]
+	mlup = np.mean(measured_mlup, axis=1)
+
 	plt.plot(nprocs, np.mean(PLN[:,0],axis=1)*1.e-6, 'ro-', label='min jacobi time')
 	plt.plot(nprocs, np.mean(PLN[:,1],axis=1)*1.e-6, 'go-', label='max jacobi time')
-	plt.plot(nprocs, np.mean(np.array(data)[:,:,-1],axis=1), 'bo-', label='measured')
+	plt.plot(nprocs, mlup, 'bo-', label='measured')
 	plt.yscale('log')
 	plt.grid()
 	plt.legend()
