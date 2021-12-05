@@ -61,38 +61,61 @@ int main(int argc, char **argv) {
   double gather_time[ITERATIONS];
   double scatter_time[ITERATIONS];
   for (int iter = 0; iter < ITERATIONS; iter++) {
-    double *block_1 = new double[blocks_size];
-    double *block_2 = new double[blocks_size];
+    double *block_1;
+    double *block_2;
+
+    if (size > 1) {
+      block_1 = new double[blocks_size];
+      block_2 = new double[blocks_size];
+    }
 
     start_time = MPI_Wtime();
 
-    before_scatter_time = MPI_Wtime();
-    // send/recv the first matrix
-    MPI_Scatter(matrix_1, blocks_size, MPI_DOUBLE, block_1, blocks_size,
-                MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    // send/recv the second matrix
-    MPI_Scatter(matrix_2, blocks_size, MPI_DOUBLE, block_2, blocks_size,
-                MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    after_scatter_time = MPI_Wtime();
+    if (size > 1) {
+      before_scatter_time = MPI_Wtime();
+      // send/recv the first matrix
+      MPI_Scatter(matrix_1, blocks_size, MPI_DOUBLE, block_1, blocks_size,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      // send/recv the second matrix
+      MPI_Scatter(matrix_2, blocks_size, MPI_DOUBLE, block_2, blocks_size,
+                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      after_scatter_time = MPI_Wtime();
+    } else {
+      block_1 = matrix_1;
+      block_2 = matrix_2;
+    }
 
-    double block_sum[blocks_size];
+    double *block_sum = new double[blocks_size];
     for (int i = 0; i < blocks_size; i++)
       block_sum[i] = block_1[i] + block_2[i];
 
-    delete[] block_1;
-    delete[] block_2;
+    // no need to release if size is 1
+    if (size > 1) {
+      delete[] block_1;
+      delete[] block_2;
+    }
 
-    double *result = new double[N];
+    double *result;
+    if (size > 1)
+      result = new double[N];
+    else
+      result = block_sum;
 
-    before_gather_time = MPI_Wtime();
-    // send back the summed block
-    MPI_Gather(block_sum, blocks_size, MPI_DOUBLE, result, blocks_size,
-               MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    after_gather_time = MPI_Wtime();
+    if (size > 1) {
+      before_gather_time = MPI_Wtime();
+      // send back the summed block
+      MPI_Gather(block_sum, blocks_size, MPI_DOUBLE, result, blocks_size,
+                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      after_gather_time = MPI_Wtime();
+    } else {
+      result = block_sum;
+    }
 
     end_time = MPI_Wtime();
 
     delete[] result;
+    if (size > 1)
+      delete[] block_sum;
 
     tot_time[iter] = end_time - start_time;
     gather_time[iter] = after_gather_time - before_gather_time;
