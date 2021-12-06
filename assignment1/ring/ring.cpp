@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   const int right_tag = TAG_MULTIPLIER * right;
   const int left_tag = TAG_MULTIPLIER * left;
 
-  double start_time;
+  double start_time, end_time = 0;
 
   int msg_count = 0;
 
@@ -84,8 +84,10 @@ int main(int argc, char **argv) {
     // before taking the time we wait that all the processes are done with their
     // own communication
     MPI_Barrier(cartesian_communicator);
+    end_time = MPI_Wtime();
+
     if (it >= INITIAL_SKIP)
-      times[it - INITIAL_SKIP] = MPI_Wtime() - start_time;
+      times[it - INITIAL_SKIP] = end_time - start_time;
 
 #ifndef TIME_ONLY
     std::cout << "I am process " << rank << " and i have received " << msg_count
