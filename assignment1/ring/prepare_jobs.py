@@ -16,24 +16,21 @@ template = """
 #PBS -l walltime=$walltime
 #PBS -q dssc
 ### Merge output and error files
-#PBS -o /u/dssc/fandreuz/HPC/assignment1/ring/ring$P.txt
+#PBS -o /u/dssc/fandreuz/HPC/assignment1/ring/results/ring$P.txt
 #PBS -l select=1:ncpus=$P:mpiprocs=$P
-### Send email on abort, begin and end
-#PBS -m abe
-### Specify mail recipient
-#PBS -M andreuzzi.francesco@gmail.com
 
 cd /u/dssc/fandreuz/HPC/assignment1/ring
 
 module load openmpi/4.0.3/gnu/9.3.0
+mpic++ -D TIME_ONLY ring.cpp
 
-declare -a opt_flags=("-O0" "-O1" "-O2" "-O3" "-O3 -march=native" )
+mpirun -np $P --map-by core a.out
 
-for opt in $${opt_flags[@]}; do
-	mpic++ $$opt -D TIME_ONLY ring.cpp
-	mpirun -np $P a.out
-	echo "STOP"
-done
+echo DONE
+
+mpirun -np $P --map-by socket a.out
+
+echo DONE
 """
 
 for i in range(n_min,n_max+1):
