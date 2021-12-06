@@ -32,7 +32,7 @@ for line in output:
 	buff.append(float(line))
 print('latency, bandwidth ', buff)
 latency = buff[0] * 1.e-6
-bandwidth = buff[1] *1.e6
+bandwidth = buff[1]
 
 #
 
@@ -41,8 +41,9 @@ def estimate_pln(jacobi_time, Tc, N):
 
 PLN = []
 for dt in data:
-	k = np.count_nonzero(dt[0,:3] - 1)
-	c = L*L * k * 2 * 8
+	k = np.count_nonzero(dt[0,:3] - 1) * 2
+	c = (L*L * k * 2 * 8) * pow(2,-20)
+	print(c / bandwidth, k*latency)
 	Tc = c / bandwidth + k * latency
 	N = np.product(dt[0,:3])
 
@@ -58,13 +59,18 @@ for idx,i in enumerate(nprocs):
 	print(PLN[idx,1])
 
 if len(sys.argv) == 4 and sys.argv[3] == '1':
-	measured_mlup = np.array(data)[:,2:-2,-1]
-	mlup = np.mean(measured_mlup, axis=1)
+	measured_mlup = np.array(data)[:,:,-1]
+	mlup = np.mean(measured_mlup[:,2:-2], axis=1)
 
 	plt.plot(nprocs, np.mean(PLN[:,0],axis=1)*1.e-6, 'ro-', label='min jacobi time')
 	plt.plot(nprocs, np.mean(PLN[:,1],axis=1)*1.e-6, 'go-', label='max jacobi time')
 	plt.plot(nprocs, mlup, 'bo-', label='measured')
+
 	plt.yscale('log')
+
+	plt.xlabel('P')
+	plt.ylabel('MLUP/sec')
+
 	plt.grid()
 	plt.legend()
 	plt.show()
