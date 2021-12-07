@@ -38,3 +38,5 @@
 **/__latexindent_temp.tex
 *.fls
 *.fdb_latexmk
+
+*.npy
