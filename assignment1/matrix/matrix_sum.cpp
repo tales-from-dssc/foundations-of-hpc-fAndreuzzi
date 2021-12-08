@@ -43,7 +43,8 @@ int main(int argc, char **argv) {
 
   int N = dim1 * dim2 * dim3;
   // we extend the array in order to make it divisible by size
-  N += size - N % size;
+  int residual = N % size;
+  N += (residual != 0) * (size - residual);
 
   int blocks_size = N / size;
 
