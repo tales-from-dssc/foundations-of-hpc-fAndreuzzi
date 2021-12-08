@@ -38,11 +38,6 @@ int main(int argc, char **argv) {
 
   int msg_count = 0;
 
-#ifdef DEBUG
-  std::cout << "Process " << rank << " objective: " << expected_send
-            << std::endl;
-#endif
-
   // 0: send left
   // 1: send right
   // 2: received from right
