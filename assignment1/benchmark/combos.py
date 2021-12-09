@@ -1,4 +1,7 @@
 import itertools
+import sys
+
+# does not produce any .pbs file if called with argument "0"
 
 pbs_script = """
 #!/bin/bash
@@ -105,8 +108,9 @@ for intel in intels:
 
                 print("{},{},{},{}:{}".format(intel, net, mb, gp, cmd(net, mb, intel, gp)))
 
-                text_file = open(
-                    "{}_{}_{}_{}.pbs".format(intel, net, mb, gp), "w"
-                )
-                text_file.write(content)
-                text_file.close()
+                if len(sys.argv) < 2 or sys.argv[1] != '0':
+                    text_file = open(
+                        "{}_{}_{}_{}.pbs".format(intel, net, mb, gp), "w"
+                    )
+                    text_file.write(content)
+                    text_file.close()
