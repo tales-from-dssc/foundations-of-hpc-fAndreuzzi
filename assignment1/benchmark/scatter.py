@@ -11,7 +11,9 @@ def process_filename(filename):
 
 def latband(filename):
 	label = ' '.join(process_filename(filename))
-	print('python3 fit.py ' + label)
+
+	if __name__ == "__main__":
+		print('python3 fit.py ' + label)
 
 	for word in sys.argv[1:]:
 		if not word in label or ('n'+word) in label: # we also consider intel/nintel and gpu/ngpu
@@ -33,18 +35,19 @@ def latband(filename):
 
 	return label, latency, bandwidth
 
-labels, lat, band = tuple(zip(*list(filter(lambda x: x is not None, map(latband, os.listdir('results'))))))
+if __name__ == "__main__":
+	labels, lat, band = tuple(zip(*list(filter(lambda x: x is not None, map(latband, os.listdir('results'))))))
 
-plt.scatter(lat, band)
+	plt.scatter(lat, band)
 
-plt.xlabel('$\mu$s')
-plt.ylabel('Mbytes/s')
+	plt.xlabel('$\mu$s')
+	plt.ylabel('Mbytes/s')
 
-for i, txt in enumerate(labels):
-	plt.annotate(txt, (lat[i], band[i]))
+	for i, txt in enumerate(labels):
+		plt.annotate(txt, (lat[i], band[i]))
 
-plt.yscale('log')
-plt.xscale('log')
+	plt.yscale('log')
+	plt.xscale('log')
 
-plt.grid()
-plt.show()
+	plt.grid()
+	plt.show()
