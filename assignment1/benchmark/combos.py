@@ -17,7 +17,7 @@ module load {}
 make clean
 make
 
-for i in {{1..1000}}; do {}; done
+for i in {{1..100}}; do {}; done
 """
 
 network = ["infiniband", "gigabit"]
@@ -35,14 +35,14 @@ def cmd(net, mb, intel, gp):
             if net == "infiniband"
             else "--mca pml ob1 --mca btl tcp,self"
         )
-        return "mpirun -np 2 {} --report-bindings {} ./IMB-MPI1 PingPong -msglog {}".format(
+        return "mpirun -np 2 {} --report-bindings {} IMB-MPI1 PingPong -msglog {}".format(
             network_params,
             map_by(mb, intel),
             N,
         )
     else:
         network_params = "mlx" if net == "infiniband" else "tcp"
-        return "mpirun -np 2 -genv I_MPI_FABRICS {} -env I_MPI_DEBUG 5 {} ./IMB-MPI1 PingPong -msglog {}".format(
+        return "mpirun -np 2 -print-rank-map -genv I_MPI_FABRICS {} -env I_MPI_DEBUG 5 {} IMB-MPI1 PingPong -msglog {}".format(
             network_params,
             map_by(mb, intel),
             N,
@@ -102,6 +102,8 @@ for intel in intels:
                     load_module(intel),
                     cmd(net, mb, intel, gp),
                 )
+
+                print("{},{},{},{}:{}".format(intel, net, mb, gp, cmd(net, mb, intel, gp)))
 
                 text_file = open(
                     "{}_{}_{}_{}.pbs".format(intel, net, mb, gp), "w"
