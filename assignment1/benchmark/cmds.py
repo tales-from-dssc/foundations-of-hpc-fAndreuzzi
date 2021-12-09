@@ -1,6 +1,6 @@
 from subprocess import Popen, getstatusoutput, PIPE
 
-result = Popen('python3 combos.py', shell=True, stdout=PIPE, stderr=PIPE)
+result = Popen('python3 combos.py 0', shell=True, stdout=PIPE, stderr=PIPE)
 output = iter(result.stdout.readline, b'')
 
 carr = []
