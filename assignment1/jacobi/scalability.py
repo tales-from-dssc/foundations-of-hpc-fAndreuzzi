@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-from subprocess import Popen, getstatusoutput, PIPE
 from pln import compute_pln
+from latband import find_latency_bandwidth
 
 L = 1200
 
@@ -43,17 +43,7 @@ elif sys.argv[1] == 'twonodes':
 
 print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
 
-# get latency and bandiwdth
-cmd = 'python3 ../benchmark/fit.py nintel infiniband {} {}'.format(third, fourth)
-print(cmd)
-result = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
-output = iter(result.stdout.readline, b'')
-
-buff = []
-for line in output:
-	buff.append(float(line))
-latency = buff[0] * 1.e-6
-bandwidth = buff[1]
+latency, bandwidth = find_latency_bandwidth(third, fourth)
 print('lat: {}, band: {}'.format(latency, bandwidth))
 
 #
