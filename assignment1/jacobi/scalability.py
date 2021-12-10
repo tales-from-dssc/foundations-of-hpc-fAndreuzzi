@@ -42,46 +42,45 @@ def load_serial_quantities():
 		else:
 			return serial_gpu_jacobi, serial_gpu_lup
 
-data, third, fourth = load_files()
+if __name__ == "__main__":
+	data, third, fourth = load_files()
 
-serial_time, serial_lup = load_serial_quantities()
-print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
+	serial_time, serial_lup = load_serial_quantities()
+	print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
 
-latency, bandwidth = find_latency_bandwidth(third, fourth)
-print('lat: {}, band: {}'.format(latency, bandwidth))
+	latency, bandwidth = find_latency_bandwidth(third, fourth)
+	print('lat: {}, band: {}'.format(latency, bandwidth))
 
-#
+	PLN = compute_pln(data, serial_time, latency=latency, bandwidth=bandwidth, L=L)
 
-PLN = compute_pln(data, serial_time, latency=latency, bandwidth=bandwidth, L=L)
+	if len(sys.argv) == 4:
+		if sys.argv[3] == '0':
+			measured_mlup = np.array(data)[:,:,-1]
+			mlup = np.mean(measured_mlup[:,2:-2], axis=1)
 
-if len(sys.argv) == 4:
-	if sys.argv[3] == '0':
-		measured_mlup = np.array(data)[:,:,-1]
-		mlup = np.mean(measured_mlup[:,2:-2], axis=1)
+			plt.plot(nprocs, PLN*1.e-6, 'ro-', label='$P(L,N)$')
+			plt.plot(nprocs, mlup, 'bo-', label='measured')
+			plt.plot(nprocs, np.array(nprocs) * serial_lup, label='N$P_1(L)$')
 
-		plt.plot(nprocs, PLN*1.e-6, 'ro-', label='$P(L,N)$')
-		plt.plot(nprocs, mlup, 'bo-', label='measured')
-		plt.plot(nprocs, np.array(nprocs) * serial_lup, label='N$P_1(L)$')
+			plt.yscale('log')
 
-		plt.yscale('log')
+			plt.xlabel('P')
+			plt.ylabel('MLUP/sec')
 
-		plt.xlabel('P')
-		plt.ylabel('MLUP/sec')
+			plt.title('LUP')
 
-		plt.title('LUP')
+			plt.grid()
+			plt.legend()
+			plt.show()
+		elif sys.argv[3] == '1':
+			measured_mlup = np.array(data)[:,:,-1]
+			mlup = np.mean(measured_mlup[:,2:-2], axis=1)
 
-		plt.grid()
-		plt.legend()
-		plt.show()
-	elif sys.argv[3] == '1':
-		measured_mlup = np.array(data)[:,:,-1]
-		mlup = np.mean(measured_mlup[:,2:-2], axis=1)
+			plt.plot(nprocs, np.array(nprocs) * serial_lup / (PLN*1.e-6), 'ro-')
 
-		plt.plot(nprocs, np.array(nprocs) * serial_lup / (PLN*1.e-6), 'ro-')
+			plt.xlabel('P')
 
-		plt.xlabel('P')
+			plt.title('scalability')
 
-		plt.title('scalability')
-
-		plt.grid()
-		plt.show()
+			plt.grid()
+			plt.show()
