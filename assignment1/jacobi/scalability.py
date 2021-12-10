@@ -9,38 +9,42 @@ L = 1200
 nprocs_map = {'serial': [1,], 'onenode': [4,8,12], 'twonodes': [12,24,48]}
 nprocs = nprocs_map[sys.argv[1]]
 
-file_names = ['{}{}_{}'.format(sys.argv[1], i, sys.argv[2]) for i in nprocs]
-data = [np.load('results/{}.npy'.format(label)) for label in file_names]
+def load_files():
+	file_names = ['{}{}_{}'.format(sys.argv[1], i, sys.argv[2]) for i in nprocs]
+	data = [np.load('results/{}.npy'.format(label)) for label in file_names]
 
-serial_thin_jacobi = np.mean(np.load('results/serial_thin.npy')[2:-2, 2:4])
-serial_gpu_jacobi = np.mean(np.load('results/serial_gpu.npy')[2:-2, 2:4])
-# you need to set this somewhere
-serial_time = None
+	if sys.argv[1] == 'serial':
+		raise ValueError('scalability is not defined in this case')
+	elif sys.argv[1] == 'onenode':
+		third = sys.argv[2]
+		fourth = 'ngpu'
+	elif sys.argv[1] == 'twonodes':
+		fourth = sys.argv[2]
+		third = 'socket'
 
-serial_thin_lup = np.mean(np.load('results/serial_thin.npy')[2:-2, -1])
-serial_gpu_lup = np.mean(np.load('results/serial_gpu.npy')[2:-2, -1])
-# you need to set this somewhere
-serial_lup = None
+	return data, third, fourth
 
-if sys.argv[1] == 'serial':
-	raise ValueError('scalability is not defined in this case')
-elif sys.argv[1] == 'onenode':
-	third = sys.argv[2]
-	fourth = 'ngpu'
+# time and LUP
+def load_serial_quantities():
+	serial_thin_jacobi = np.mean(np.load('results/serial_thin.npy')[2:-2, 2:4])
+	serial_gpu_jacobi = np.mean(np.load('results/serial_gpu.npy')[2:-2, 2:4])
 
-	serial_time = serial_thin_jacobi
-	serial_lup = serial_thin_lup
-elif sys.argv[1] == 'twonodes':
-	fourth = sys.argv[2]
-	third = 'socket'
+	serial_thin_lup = np.mean(np.load('results/serial_thin.npy')[2:-2, -1])
+	serial_gpu_lup = np.mean(np.load('results/serial_gpu.npy')[2:-2, -1])
 
-	if fourth == 'gpu':
-		serial_time = serial_thin_jacobi
-		serial_lup = serial_thin_lup
-	else:
-		serial_time = serial_gpu_jacobi
-		serial_lup = serial_gpu_lup
+	if sys.argv[1] == 'serial':
+		raise ValueError('scalability is not defined in this case')
+	elif sys.argv[1] == 'onenode':
+		return serial_thin_jacobi, serial_thin_lup
+	elif sys.argv[1] == 'twonodes':
+		if sys.argv[2] == 'gpu':
+			return serial_thin_jacobi, serial_thin_lup
+		else:
+			return serial_gpu_jacobi, serial_gpu_lup
 
+data, third, fourth = load_files()
+
+serial_time, serial_lup = load_serial_quantities()
 print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
 
 latency, bandwidth = find_latency_bandwidth(third, fourth)
