@@ -20,7 +20,11 @@ def load_files():
 		fourth = 'ngpu'
 	elif sys.argv[1] == 'twonodes':
 		fourth = sys.argv[2]
-		third = 'socket'
+		# if we are on GPU we want to use band/lat within a single GPU node
+		# (since all the processes live in the same GPU node due to hypert.)
+		# if we are on thin we use two nodes and we switch to the appropriate
+		# band/lat.
+		third = 'socket' if fourth == 'gpu' else 'node'
 
 	return data, third, fourth
 
