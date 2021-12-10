@@ -6,14 +6,24 @@ def estimate_pln(L, jacobi_serial_time, Tc, N):
 def estimate_Tc(c, bandwidth, k, latency):
 	return c / bandwidth + k * latency
 
+def compute_k(dt):
+	return np.count_nonzero(dt[0,:3] - 1) * 2
+
+def compute_N(dt):
+	return np.product(dt[0,:3])
+
+# MBytes
+def compute_c(L,k):
+	return (L*L * k * 2 * 8) * pow(2,-20)
+
 # data is the .npy extracted from the output of jacobi
 def compute_pln(data, serial_time, latency, bandwidth, L):
 	PLN = []
 	for dt in data:
-		k = np.count_nonzero(dt[0,:3] - 1) * 2
-		c = (L*L * k * 2 * 8) * pow(2,-20)
+		k = compute_k(dt)
+		c = compute_c(L,k)
 		Tc = estimate_Tc(c, bandwidth, k, latency)
-		N = np.product(dt[0,:3])
+		N = compute_N(dt)
 
 		PLN.append(estimate_pln(L, serial_time, Tc, N))
 
