@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+plt.rcParams.update({'font.size': 25})
+
 def flt(filename):
 	flag = True
 
@@ -42,7 +44,7 @@ def file_and_label(filename):
 
 files = map(file_and_label, filter(flt, os.listdir('results/')))
 
-plt.figure(figsize=(15,6))
+plt.figure(figsize=(15,12))
 
 for file, label in files:
 	if 'bandw' in sys.argv[-1]:
