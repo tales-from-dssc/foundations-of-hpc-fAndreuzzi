@@ -2,6 +2,8 @@
 \usepackage{tabularx,ragged2e,booktabs,caption}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{array}
+\usepackage{amsmath}
 
 \title{Assignment 1}
 \author{Francesco Andreuzzi}
@@ -35,6 +37,92 @@ As you can see in the figure, the time taken by the \texttt{--map-by socket} cas
 
 \section{Measure MPI point to point performance}
 
+\subsection{Differences observed between IntelMPI and OpenMPI}
+Experiments with the \emph{PingPong} benchmark have been carried out using two different implementations of MPI available on \emph{Orfeo}, namely IntelMPI and OpenMPI. The time measured for 30 messages of growing size are shown in Figure \ref{fig:ompi_vs_intel}. It is clear that the main difference is that IntelMPI looks much more stable than OpenMPI, especially in the left region. Since the interested region is the one in which latency is dominant with respect to the bandwidth, we may assume that the two implementations communicate in different ways with the network interface, thus encountering different costs in establishing the communication and sending the message.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{benchmark/intel_vs_ompi_node.png}
+    \caption{Comparison of the time measured using the \emph{PingPong} benchmark using IntelMPI and OpenMPI, \emph{InfiniBand}, on two THIN nodes.}
+    \label{fig:ompi_vs_intel}
+\end{figure}
+
+This assumption is supported also by the latency computed using the simplified network model, which is substantially different if we switch the MPI implementation.
+
+\begin{figure}[h]
+    $$
+        \begin{array}{c | c | c} \hline
+            & \text{OpenMPI} & \text{IntelMPI} \\ \hline
+            \hline
+            \text{Core} & 0.2 \mu \text{s}  & 0.23 \mu \text{s} \\ \hline
+            \text{Socket} & 0.4 \mu \text{s}  & 0.42 \mu \text{s} \\ \hline
+            \text{Node} & 1.58 \mu \text{s}  & 1.08 \mu \text{s} \\ \hline
+        \end{array}
+    $$
+    \caption{Latency computed using the simplified linear network module in OpenMPI and IntelMPI (using \emph{InfiniBand}, on THIN nodes).}
+\end{figure}
+
+\subsection{Differences observed between Infiniband and Gigabit}
+
+\subsection{Differences observed between THIN and GPU nodes}
+
 \section{Compare performance observed against performance model for Jacobi solver}
+
+
+
+\begin{figure}
+    $$
+        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+            \hline
+            4  & 2  & 2  & 1  & 4 & 87.891  &  0.014   & 456.775  &         0.989         \\ \hline
+            8  & 2  & 2  & 2  & 6 & 131.836 &  0.022   & 913.115  &         0.989         \\ \hline
+            12 & 3  & 2  & 2  & 6 & 131.836 &  0.022   & 1369.673 &         0.989         \\ \hline
+        \end{array}
+    $$
+    \caption{One thin node, \texttt{--map-by core}, latency: 0.19 $\mu$s, bandwidth: 6095 MB/s.}
+\end{figure}
+
+
+\begin{figure}
+    $$
+        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+            \hline
+            4  & 2  & 2  & 1  & 4 & 87.891  &  0.017   & 456.711  &         0.989         \\ \hline
+            8  & 2  & 2  & 2  & 6 & 131.836 &  0.025   & 912.922  &         0.989         \\ \hline
+            12 & 3  & 2  & 2  & 6 & 131.836 &  0.025   & 1369.383 &         0.989         \\ \hline
+        \end{array}
+    $$
+    \caption{One thin node, \texttt{--map-by socket}, latency: 0.4 $\mu$s, bandwidth: 5307 MB/s.}
+\end{figure}
+
+
+\begin{figure}
+    $$
+        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+            \hline
+            12 & 3  & 2  & 2  & 6 & 131.836 &  0.012   & 953.944  &         0.985         \\ \hline
+            24 & 4  & 3  & 2  & 6 & 131.836 &  0.012   & 1907.887 &         0.985         \\ \hline
+            48 & 4  & 4  & 3  & 6 & 131.836 &  0.012   & 3815.774 &         0.985         \\ \hline
+        \end{array}
+    $$
+    \caption{Two thin nodes, latency: 1.58 $\mu$s, bandwidth: 10670 MB/s.}
+\end{figure}
+
+
+\begin{figure}
+    $$
+        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+            \hline
+            12 & 3  & 2  & 2  & 6 & 131.836 &   0.03   & 1368.929 &         0.99          \\ \hline
+            24 & 4  & 3  & 2  & 6 & 131.836 &   0.03   & 2737.858 &         0.99          \\ \hline
+            48 & 4  & 4  & 3  & 6 & 131.836 &   0.03   & 5475.716 &         0.99          \\ \hline
+        \end{array}
+    $$
+    \caption{GPU node, hyperthreading enabled, latency: 0.43 $\mu$s, bandwidth: 4415 MB/s.}
+\end{figure}
 
 \end{document}
