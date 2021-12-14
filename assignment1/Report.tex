@@ -2,6 +2,7 @@
 \usepackage{tabularx,ragged2e,booktabs,caption}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{hyperref}
 \usepackage{array}
 \usepackage{amsmath}
 
@@ -58,20 +59,16 @@ In Figure \ref{fig:matrix_performance} we show the contribution of each componen
 
 By contrast, $T_s$ behaves in an unexpected way. It would make sense that the time taken by the two calls to \texttt{MPI\_Scatter} (one for each matrix to sum) increases linearly on the number of processes. However this is not the case in the left region of the plot, while we have an approximately linear relation in the right part. This probably happens due to the fact that \texttt{MPI\_Scatter} behaves in different ways depending on the number of processes and on the size of the message to send. In some cases \texttt{MPI\_Scatter} builds a binomial tree (having the root process as its root) and delegates to its child a reduced amount of work.
 
-\section{Measure MPI point to point performance}
-In this section we briefly disucss and present the results obtained with the \emph{PingPong} benchmark on Orfeo. The banchmark has been ran on multiple kind of nodes and networks, and against different implementations of MPI. Due to the variability that is usually experienced in two consecutive runs of the benchmark we repeated each experiment 1000 times, and averaged the results for element-wise.
-
-\subsection{Differences observed between IntelMPI and OpenMPI}
-Experiments with the \emph{PingPong} benchmark have been carried out using two different implementations of MPI available on \emph{Orfeo}, namely IntelMPI and OpenMPI. The time measured for 30 messages of growing size are shown in Figure \ref{fig:ompi_vs_intel}. It is clear that the main difference is that IntelMPI looks much more stable than OpenMPI, especially in the left region. Since the interested region is the one in which latency is dominant with respect to the bandwidth, we may assume that the two implementations communicate in different ways with the network interface, thus encountering different costs in establishing the communication and sending the message.
-
-\begin{figure}[t]
+\begin{figure}[b!]
     \centering
     \includegraphics[width=\textwidth]{benchmark/intel_vs_ompi_node.png}
     \caption{Comparison of the time measured during the \emph{PingPong} benchmark using IntelMPI and OpenMPI, \emph{InfiniBand}, on two THIN nodes.}
     \label{fig:ompi_vs_intel}
 \end{figure}
+\section{Measure MPI point to point performance}
+In this section we briefly disucss and present the results obtained with the \emph{PingPong} benchmark on Orfeo. The banchmark has been ran on multiple kind of nodes and networks, and against different implementations of MPI. Due to the variability that is usually experienced in two consecutive runs of the benchmark we repeated each experiment 1000 times, and averaged the results for element-wise.
 
-\begin{figure}[b]
+\begin{figure}[t]
     $$
         \begin{array}{c | c | c} \hline
             & \text{OpenMPI} & \text{IntelMPI} \\ \hline
@@ -85,15 +82,19 @@ Experiments with the \emph{PingPong} benchmark have been carried out using two d
     \label{tab:lat_ompi_intel}
 \end{figure}
 
-This assumption is supported also by the latency computed using the simplified network model (Table \ref{tab:lat_ompi_intel}), which is substantially different if we switch the MPI implementation.
-
-\subsection{Differences observed between Infiniband and Gigabit}
-\begin{figure}[t]
+\begin{figure}[b!]
     \centering
     \includegraphics[width=\textwidth]{benchmark/infi_vs_giga_node.png}
     \caption{Comparison of the time measured with the \emph{PingPong} benchmark using InfiniBand and Gigabit network with OpenMPI, on two THIN nodes.}
     \label{fig:infi_vs_giga}
 \end{figure}
+
+\subsection{Differences observed between IntelMPI and OpenMPI}
+Experiments with the \emph{PingPong} benchmark have been carried out using two different implementations of MPI available on \emph{Orfeo}, namely IntelMPI and OpenMPI. The time measured for 30 messages of growing size are shown in Figure \ref{fig:ompi_vs_intel}. It is clear that the main difference is that IntelMPI looks much more stable than OpenMPI, especially in the left region. Since the interested region is the one in which latency is dominant with respect to the bandwidth, we may assume that the two implementations communicate in different ways with the network interface, thus encountering different costs in establishing the communication and sending the message.
+
+This assumption is supported also by the latency computed using the simplified network model (Table \ref{tab:lat_ompi_intel}), which is substantially different if we switch the MPI implementation.
+
+\subsection{Differences observed between Infiniband and Gigabit}
 
 Looking at the left region of the graph shown in Figure \ref{fig:infi_vs_giga}, we see that the latency is clearly very different in the two cases. This is most likely due to the fact that the Gigabit network performs some more controls on the communication (e.g. it verifies that the message arrives to the receiver), therefore the message needs to pass through more layers with respect to InfiniBand network. Also, InfiniBand employs several "tricks" to make the communication faster, which likely contributes to the reduced latency. For instance when using Gigabit the user of the network has to pre-process the message using its own computational resources. This does not happen with InfiniBand, since the pre-processing happens on a software module of the network.
 
@@ -107,7 +108,7 @@ Looking at the left region of the graph shown in Figure \ref{fig:infi_vs_giga}, 
 Also, as you can see in Figure \ref{fig:infi_vs_giga_bandwidth}, the asymptotic bandwidth is much higher when we use InfiniBand, which is something that we could have expected before-hand.
 
 \subsection{Other observations}
-\begin{figure}[t]
+\begin{figure}[b!]
     \centering
     \includegraphics[width=\textwidth]{benchmark/mapby_bandwidth.png}
     \caption{Comparison of the bandwidth measured with the \emph{PingPong} benchmark using different distributions of the processes (same core, different sockets, different nodes) with OpenMPI, on THIN nodes.}
@@ -125,7 +126,7 @@ The parts of the graphs in which we see a decrease, if this hypothesis is correc
 
 \section{Compare performance observed against performance model for Jacobi solver}
 
-\begin{figure}
+\begin{figure}[h!]
     $$
         \begin{array}{c | c | c | c | c | c | c | c | c} \hline
             N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
@@ -139,7 +140,7 @@ The parts of the graphs in which we see a decrease, if this hypothesis is correc
 \end{figure}
 
 
-\begin{figure}
+\begin{figure}[h!]
     $$
         \begin{array}{c | c | c | c | c | c | c | c | c} \hline
             N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
@@ -153,7 +154,7 @@ The parts of the graphs in which we see a decrease, if this hypothesis is correc
 \end{figure}
 
 
-\begin{figure}
+\begin{figure}[h!]
     $$
         \begin{array}{c | c | c | c | c | c | c | c | c} \hline
             N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
@@ -167,7 +168,7 @@ The parts of the graphs in which we see a decrease, if this hypothesis is correc
 \end{figure}
 
 
-\begin{figure}
+\begin{figure}[h!]
     $$
         \begin{array}{c | c | c | c | c | c | c | c | c} \hline
             N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
