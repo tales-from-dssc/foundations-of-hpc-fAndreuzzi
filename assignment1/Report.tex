@@ -4,6 +4,7 @@
 \usepackage{float}
 \usepackage{hyperref}
 \usepackage{array}
+\usepackage{graphicx}
 \usepackage{amsmath}
 
 \title{Assignment 1}
@@ -133,57 +134,69 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 \section{Compare performance observed against performance model for Jacobi solver}
 
 \begin{figure}[h!]
-    $$
-        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+    \makebox[\textwidth][c]{
+        $
+        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            4  & 2  & 2  & 1  & 4 & 87.891  &  0.014   & 456.775  &         0.989         \\ \hline
-            8  & 2  & 2  & 2  & 6 & 131.836 &  0.022   & 913.115  &         0.989         \\ \hline
-            12 & 3  & 2  & 2  & 6 & 131.836 &  0.022   & 1369.673 &         0.989         \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
+            4  & 2  & 2  & 1  &  4  & 87.891  &  0.014   &    453.264     & 409.965  &             1.001             \\ \hline
+            8  & 2  & 2  & 2  &  6  & 131.836 &  0.022   &    906.101     & 809.103  &             1.001             \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.022   &    1359.151    & 1187.816 &             1.001             \\ \hline
         \end{array}
-    $$
+        $
+        }
     \caption{One thin node, \texttt{--map-by core}, latency: 0.19 $\mu$s, bandwidth: 6095 MB/s.}
 \end{figure}
 
 
 \begin{figure}[h!]
-    $$
-        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+    \makebox[\textwidth][c]{
+        $
+        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            4  & 2  & 2  & 1  & 4 & 87.891  &  0.017   & 456.711  &         0.989         \\ \hline
-            8  & 2  & 2  & 2  & 6 & 131.836 &  0.025   & 912.922  &         0.989         \\ \hline
-            12 & 3  & 2  & 2  & 6 & 131.836 &  0.025   & 1369.383 &         0.989         \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
+            4  & 2  & 2  & 1  &  4  & 87.891  &  0.017   &    453.201     & 410.274  &             1.001             \\ \hline
+            8  & 2  & 2  & 2  &  6  & 131.836 &  0.025   &    905.910     & 811.076  &             1.002             \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.025   &    1358.865    & 1213.535 &             1.002             \\ \hline
         \end{array}
-    $$
+        $
+        }
     \caption{One thin node, \texttt{--map-by socket}, latency: 0.4 $\mu$s, bandwidth: 5307 MB/s.}
 \end{figure}
 
 
 \begin{figure}[h!]
-    $$
-        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+    \makebox[\textwidth][c]{
+        $
+        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            12 & 3  & 2  & 2  & 6 & 131.836 &  0.012   & 953.944  &         0.985         \\ \hline
-            24 & 4  & 3  & 2  & 6 & 131.836 &  0.012   & 1907.887 &         0.985         \\ \hline
-            48 & 4  & 4  & 3  & 6 & 131.836 &  0.012   & 3815.774 &         0.985         \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.012   &    1359.980    & 1213.068 &             1.001             \\ \hline
+    24 & 4  & 3  & 2  &  6  & 131.836 &  0.012   &    2719.959    & 2413.654 &             1.001             \\ \hline
+    48 & 4  & 4  & 3  &  6  & 131.836 &  0.012   &    5439.919    & 4546.634 &             1.001             \\ \hline
         \end{array}
-    $$
+        $
+        }
     \caption{Two thin nodes, latency: 1.58 $\mu$s, bandwidth: 10670 MB/s.}
 \end{figure}
 
 
 \begin{figure}[h!]
-    $$
-        \begin{array}{c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     P(L,N)     & \frac{P(1)*N}{P(L,N)} \\ \hline
+    \makebox[\textwidth][c]{
+        $
+        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            12 & 3  & 2  & 2  & 6 & 131.836 &   0.03   & 1368.929 &         0.99          \\ \hline
-            24 & 4  & 3  & 2  & 6 & 131.836 &   0.03   & 2737.858 &         0.99          \\ \hline
-            48 & 4  & 4  & 3  & 6 & 131.836 &   0.03   & 5475.716 &         0.99          \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 78.269 &             1.000             \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &   0.03   &    937.958     & 817.657  &             1.001             \\ \hline
+    24 & 4  & 3  & 2  &  6  & 131.836 &   0.03   &    1875.917    & 1390.156 &             1.001             \\ \hline
+    48 & 4  & 4  & 3  &  6  & 131.836 &   0.03   &    3751.833    & 1441.930 &             1.001             \\ \hline
         \end{array}
-    $$
+        $
+        }
     \caption{GPU node, hyperthreading enabled, latency: 0.43 $\mu$s, bandwidth: 4415 MB/s.}
 \end{figure}
 
