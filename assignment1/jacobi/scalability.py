@@ -30,8 +30,8 @@ def load_files():
 
 # time and LUP
 def load_serial_quantities():
-	serial_thin_jacobi = np.mean(np.load('results/serial_thin.npy')[2:-2, 2:4])
-	serial_gpu_jacobi = np.mean(np.load('results/serial_gpu.npy')[2:-2, 2:4])
+	serial_thin_jacobi = np.mean(np.load('results/serial_thin.npy')[2:-2, 0:2])
+	serial_gpu_jacobi = np.mean(np.load('results/serial_gpu.npy')[2:-2, 0:2])
 
 	serial_thin_lup = np.mean(np.load('results/serial_thin.npy')[2:-2, -1])
 	serial_gpu_lup = np.mean(np.load('results/serial_gpu.npy')[2:-2, -1])
@@ -41,7 +41,7 @@ def load_serial_quantities():
 	elif sys.argv[1] == 'onenode':
 		return serial_thin_jacobi, serial_thin_lup
 	elif sys.argv[1] == 'twonodes':
-		if sys.argv[2] == 'gpu':
+		if sys.argv[2] == 'ngpu':
 			return serial_thin_jacobi, serial_thin_lup
 		else:
 			return serial_gpu_jacobi, serial_gpu_lup
