@@ -25,12 +25,13 @@ def row(i):
 	Tc = estimate_Tc(c, bandwidth, k, latency)
 
 	pln = estimate_pln(L, serial_time, Tc, N) * 1.e-6
+	measured_pln = np.mean(dt[:,-1])
 
-	return [N, *dt[0,:3], k, np.round(c,3), np.round(Tc,3), np.round(pln,3), np.round(np.mean(dt[:,-1]), 3), np.round(N*serial_lup / pln,3)]
+	return [N, *dt[0,:3], k, np.round(c,3), np.round(Tc,3), np.round(pln,3), np.round(measured_pln, 3), np.round(N*serial_lup / pln,3), np.round(N*serial_lup / measured_pln, 3)]
 
 writer = LatexTableWriter()
 writer.table_name = "example_table"
-writer.headers = ["N", "Nx", "Ny", "Nz", "k", "C(L,N)", "T_c(L,N)", "\\tilde{P}(L,N)", "P(L,N)", "\\frac{P(1)*N}{\\tilde{P}(L,N)}"]
+writer.headers = ["N", "Nx", "Ny", "Nz", "k", "C(L,N)", "T_c(L,N)", "\\tilde{P}(L,N)", "P(L,N)", "\\frac{P(1)*N}{\\tilde{P}(L,N)}", "\\frac{P(1)*N}{P(L,N)}"]
 writer.value_matrix = list(map(row, range(len(PLN))))
 writer.value_matrix.insert(0, [1, 1, 1, 1, 'n/a', 'n/a', 'n/a', 'n/a', np.round(serial_lup,3), 1])
 writer.column_styles=[
