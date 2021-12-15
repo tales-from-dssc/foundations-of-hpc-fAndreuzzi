@@ -132,17 +132,16 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 
 \newpage
 \section{Compare performance observed against performance model for Jacobi solver}
-
-\begin{figure}[h!]
+\begin{figure}[b!]
     \makebox[\textwidth][c]{
         $
-        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
+        \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{\tilde{P}(L,N)} & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
-            4  & 2  & 2  & 1  &  4  & 87.891  &  0.014   &    453.264     & 409.965  &             1.001             \\ \hline
-            8  & 2  & 2  & 2  &  6  & 131.836 &  0.022   &    906.101     & 809.103  &             1.001             \\ \hline
-            12 & 3  & 2  & 2  &  6  & 131.836 &  0.022   &    1359.151    & 1187.816 &             1.001             \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1       & 1           \\ \hline
+            4  & 2  & 2  & 1  &  4  & 87.891  &  0.014   &    453.264     & 409.965  &             1.001             &         1.107         \\ \hline
+            8  & 2  & 2  & 2  &  6  & 131.836 &  0.022   &    906.101     & 809.103  &             1.001             &         1.121         \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.022   &    1359.151    & 1187.816 &             1.001             &         1.146         \\ \hline
         \end{array}
         $
         }
@@ -150,16 +149,16 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 \end{figure}
 
 
-\begin{figure}[h!]
+\begin{figure}[t!]
     \makebox[\textwidth][c]{
         $
-        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
+        \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{\tilde{P}(L,N)} & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
-            4  & 2  & 2  & 1  &  4  & 87.891  &  0.017   &    453.201     & 410.274  &             1.001             \\ \hline
-            8  & 2  & 2  & 2  &  6  & 131.836 &  0.025   &    905.910     & 811.076  &             1.002             \\ \hline
-            12 & 3  & 2  & 2  &  6  & 131.836 &  0.025   &    1358.865    & 1213.535 &             1.002             \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1       & 1            \\ \hline
+            4  & 2  & 2  & 1  &  4  & 87.891  &  0.017   &    453.201     & 410.274  &             1.001             &         1.106         \\ \hline
+            8  & 2  & 2  & 2  &  6  & 131.836 &  0.025   &    905.910     & 811.076  &             1.002             &         1.119         \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.025   &    1358.865    & 1213.535 &             1.002             &         1.122         \\ \hline
         \end{array}
         $
         }
@@ -167,16 +166,16 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 \end{figure}
 
 
-\begin{figure}[h!]
+\begin{figure}[b!]
     \makebox[\textwidth][c]{
         $
-        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
+        \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{\tilde{P}(L,N)} & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1.000             \\ \hline
-            12 & 3  & 2  & 2  &  6  & 131.836 &  0.012   &    1359.980    & 1213.068 &             1.001             \\ \hline
-    24 & 4  & 3  & 2  &  6  & 131.836 &  0.012   &    2719.959    & 2413.654 &             1.001             \\ \hline
-    48 & 4  & 4  & 3  &  6  & 131.836 &  0.012   &    5439.919    & 4546.634 &             1.001             \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 113.423  &             1       & 1            \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &  0.012   &    1359.980    & 1213.068 &             1.001             &         1.122         \\ \hline
+            24 & 4  & 3  & 2  &  6  & 131.836 &  0.012   &    2719.959    & 2413.654 &             1.001             &         1.128         \\ \hline
+            48 & 4  & 4  & 3  &  6  & 131.836 &  0.012   &    5439.919    & 4546.634 &             1.001             &         1.197         \\ \hline
         \end{array}
         $
         }
@@ -184,20 +183,36 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 \end{figure}
 
 
-\begin{figure}[h!]
+\begin{figure}[t!]
     \makebox[\textwidth][c]{
         $
-        \begin{array}{c | c | c | c | c | c | c | c | c | c} \hline
-            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{P(L,N)} \\ \hline
+        \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
+            N  & Nx & Ny & Nz & k & C(L,N)  & T_c(L,N) &     \tilde{P}(L,N) & P(L,N) & \frac{P(1)*N}{\tilde{P}(L,N)} & \frac{P(1)*N}{P(L,N)} \\ \hline
             \hline
-            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 78.269 &             1.000             \\ \hline
-            12 & 3  & 2  & 2  &  6  & 131.836 &   0.03   &    937.958     & 817.657  &             1.001             \\ \hline
-    24 & 4  & 3  & 2  &  6  & 131.836 &   0.03   &    1875.917    & 1390.156 &             1.001             \\ \hline
-    48 & 4  & 4  & 3  &  6  & 131.836 &   0.03   &    3751.833    & 1441.930 &             1.001             \\ \hline
+            1  & 1  & 1  & 1  & \texttt{n/a} & \texttt{n/a}  & \texttt{n/a}  & \texttt{n/a} & 78.269 &             1       & 1      \\ \hline
+            12 & 3  & 2  & 2  &  6  & 131.836 &   0.03   &    937.958     & 817.657  &             1.001             &         1.149         \\ \hline
+            24 & 4  & 3  & 2  &  6  & 131.836 &   0.03   &    1875.917    & 1390.156 &             1.001             &         1.351         \\ \hline
+            48 & 4  & 4  & 3  &  6  & 131.836 &   0.03   &    3751.833    & 1441.930 &             1.001             &         2.605         \\ \hline
         \end{array}
         $
         }
     \caption{GPU node, hyperthreading enabled, latency: 0.43 $\mu$s, bandwidth: 4415 MB/s.}
 \end{figure}
+
+We discuss briefly the results in the four cases taken into account (one thin node with different kinds of process mapping, two thin nodes, one GPU node with hyperthreading enabled). In the tables we show the following quantities:
+\begin{itemize}
+    \item $N, N_x, N_y, N_z$: respectively the total number of processes, the number of processes along the first, second and third axis;
+    \item $k$: the number of axes such that the number of processors along that axis is different than one, multiplied by two;
+    \item $C(L,N)$[MBytes]: the maximum data volume which transferrable on each node nework link;
+    \item $T_c(L,N)$: the time it takes to communicate the halo on average;
+    \item $\tilde{P}(L,N)$[MLUP/s]: MLUP per second predicted by the model, represents the number of grid cells treated per unit of time;
+    \item $P(L,N)$[MLUP/s]: MLUP per second measured on Orfeo.
+\end{itemize}
+
+We also show the predicted and measured weak scalability in the last two columns. Predicted quantities are highlighted with a "tilde", therefore $\tilde(P)(L,N)$ represents the predicted number of MLUP/s.
+
+It is clear that the model is able to recognize the evolution of the function of interest in most cases, except for the case in which we use a GPU node with hyperthreading enabled. We may theorize that the problem in this case is the fact that the model is very simple and does not take into account the effects of using hyperthreading, which also determine a very bad scalability.
+
+However, the model overestimates $P(L,N)$, which then results in an overestimation of weak scalability (which you can see in the second to last column of our tables). Since the model "looks reasonable", and since the contribution given by the application of Jacobi's algorithms is definitely constant as the number of processors increase (and almost equal for all the processors), we may assume that the problem is inside the communication time component. Since latency has very little influence in our case, due to the size of the halos to be passed across the processes, we may theorize that the problem resides in an overestimation of the bandwidth of the machines in which we run the Jacobi solver.
 
 \end{document}
