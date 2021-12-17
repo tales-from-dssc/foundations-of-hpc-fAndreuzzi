@@ -1,19 +1,23 @@
 from latband import find_latency_bandwidth
-from pytablewriter import LatexTableWriter
+from pytablewriter import LatexTableWriter, CsvTableWriter
 from pytablewriter.style import Style
 import numpy as np
 from scalability import load_serial_quantities, load_files, L
 from pln import *
 
+debug = False
+
 data, third, fourth = load_files()
 
 serial_time, serial_lup = load_serial_quantities()
-print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
+if debug:
+	print('found serial time {} and LUP {}'.format(serial_time, serial_lup))
 
-latency, bandwidth = find_latency_bandwidth(third, fourth)
-print('lat: {}, band: {}'.format(latency, bandwidth))
+latency, bandwidth = find_latency_bandwidth(third, fourth, debug=debug)
+if debug:
+	print('lat: {}, band: {}'.format(latency, bandwidth))
 
-PLN = compute_pln(data, serial_time, latency=latency, bandwidth=bandwidth, L=L)
+PLN = compute_pln(data, serial_time, latency=latency, bandwidth=bandwidth, L=L, debug=debug)
 
 def row(i):
 	dt = data[i]
@@ -29,7 +33,10 @@ def row(i):
 
 	return [N, *dt[0,:3], k, np.round(c,3), np.round(Tc,3), np.round(pln,3), np.round(measured_pln, 3), np.round(N*serial_lup / pln,3), np.round(N*serial_lup / measured_pln, 3)]
 
-writer = LatexTableWriter()
+tb = CsvTableWriter()
+# tb = LatexTableWriter()
+
+writer = tb
 writer.table_name = "example_table"
 writer.headers = ["N", "Nx", "Ny", "Nz", "k", "C(L,N)", "T_c(L,N)", "\\tilde{P}(L,N)", "P(L,N)", "\\frac{P(1)*N}{\\tilde{P}(L,N)}", "\\frac{P(1)*N}{P(L,N)}"]
 writer.value_matrix = list(map(row, range(len(PLN))))
