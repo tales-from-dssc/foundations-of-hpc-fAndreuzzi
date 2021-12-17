@@ -123,6 +123,13 @@ Also, as you can see in Figure \ref{fig:infi_vs_giga_bandwidth}, the asymptotic 
 
 No substantial differences have been observed between THIN and GPU nodes, using both IntelMPI and OpenMPI.
 
+As expected, the model for network performance is able to approximate the time needed to deliver a message from one process to another, as long as the size of the message is:
+\begin{itemize}
+    \item In the region where latency dominates the communication time;
+    \item In the region where bandwidth dominates the communication time.
+\end{itemize}
+In the middle of these two regions the results produced using the model are not completely coherent with those measured with the benchmark.
+
 It is interesting to observe that in general the measured asymptotic bandwidth is higher when the processes live in different nodes, with respect to the bandwidth we measured when the processes are on the same node. However the maximum bandwidth achieved is reached only in the latter case, but this does not coincide with asymptotic bandwidth as you can see in Figure \ref{fig:mapby} (in the figure the maximum bandwidth is reached when the message size is exactly 1 MByte). An hypothesis to explain this fact is that this happens due to how the message is delivered in the two cases:
 \begin{itemize}
     \item When the processes live in different nodes, the message is delivered using InfiniBand network, which results in the asymptotic bandwidth observed above;
