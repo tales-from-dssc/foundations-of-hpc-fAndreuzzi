@@ -2,6 +2,11 @@
 #include <iostream>
 #include <mpi.h>
 
+/*
+	An asynchronous ring.
+	By F. Andreuzzi
+*/
+
 #define TAG_MULTIPLIER 10
 // number of time we repeat the whole communication to obtain a decent
 // statistic on the running time
@@ -18,6 +23,8 @@ int main(int argc, char **argv) {
   int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  // the communicator is clearly periodic since the process on the right of
+  // the last process is the first process
   int periodic = 1;
   MPI_Comm cartesian_communicator;
   MPI_Cart_create(MPI_COMM_WORLD, 1, &size, &periodic, 1,
@@ -36,6 +43,7 @@ int main(int argc, char **argv) {
 
   double start_time, end_time = 0;
 
+  // number of messages sent by this porcess
   int msg_count = 0;
 
   // 0: send left
@@ -53,6 +61,7 @@ int main(int argc, char **argv) {
     start_time = MPI_Wtime();
 
     for (int i = 0; i < size; ++i) {
+      // all the operations are asynchronous
       MPI_Isend(&buffer[0], 1, MPI_INT, left, tag, cartesian_communicator,
                 &requests[0]);
       MPI_Irecv(&buffer[2], 1, MPI_INT, right, right_tag,
@@ -61,6 +70,7 @@ int main(int argc, char **argv) {
                 &requests[1]);
       MPI_Irecv(&buffer[3], 1, MPI_INT, left, left_tag, cartesian_communicator,
                 &requests[3]);
+      // we wait for the end of the asynchronous operations
       MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
 
       msg_count += 2;
@@ -84,13 +94,13 @@ int main(int argc, char **argv) {
     if (it >= INITIAL_SKIP)
       times[it - INITIAL_SKIP] = end_time - start_time;
 
-#ifndef TIME_ONLY
+#ifdef DEBUG
     std::cout << "I am process " << rank << " and i have received " << msg_count
               << " messages. My final messages have tag " << tag
               << " and value " << buffer[3] << ", " << buffer[2] << std::endl;
 #endif
 
-    // reset buffer and count
+    // reset buffer and count to start again in the next iteration
     msg_count = 0;
     buffer[0] = rank;
     buffer[1] = -rank;
