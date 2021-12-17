@@ -172,8 +172,23 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
     \caption{One thin node, \texttt{--map-by socket}, latency: 0.4 $\mu$s, bandwidth: 5307 MB/s.}
 \end{figure}
 
+We discuss briefly the results in the four cases taken into account (one thin node with different kinds of process mapping, two thin nodes, one GPU node with hyperthreading enabled). In the tables we show the following quantities:
+\begin{itemize}
+    \item $N, N_x, N_y, N_z$: respectively the total number of processes, the number of processes along the first, second and third axis;
+    \item $k$: the number of axes such that the number of processors along that axis is different than one, multiplied by two;
+    \item $C(L,N)$[MBytes]: the maximum data volume which transferrable on each node nework link;
+    \item $T_c(L,N)$: the time it takes to communicate the halo on average;
+    \item $\tilde{P}(L,N)$[MLUP/s]: MLUP per second predicted by the model, represents the number of grid cells treated per unit of time;
+    \item $P(L,N)$[MLUP/s]: MLUP per second measured on Orfeo.
+\end{itemize}
 
-\begin{figure}[b!]
+We also show the predicted and measured weak scalability in the last two columns. Predicted quantities are highlighted with a "tilde", therefore $\tilde(P)(L,N)$ represents the predicted number of MLUP/s.
+
+It is clear that the model is able to recognize the evolution of the function of interest in most cases, except for the case in which we use a GPU node with hyperthreading enabled. We may theorize that the problem in this case is the fact that the model is very simple and does not take into account the effects of using hyperthreading, which also determine a very bad scalability.
+
+However, the model overestimates $P(L,N)$, which then results in an overestimation of weak scalability (which you can see in the second to last column of our tables). Since the model "looks reasonable", and since the contribution given by the application of Jacobi's algorithms is definitely constant as the number of processors increase (and almost equal for all the processors), we may assume that the problem is inside the communication time component. Since latency has very little influence in our case, due to the size of the halos to be passed across the processes, we may theorize that the problem resides in an overestimation of the bandwidth of the machines in which we run the Jacobi solver.
+
+\begin{figure}[h!]
     \makebox[\textwidth][c]{
         $
         \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
@@ -190,7 +205,7 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
 \end{figure}
 
 
-\begin{figure}[t!]
+\begin{figure}[h!]
     \makebox[\textwidth][c]{
         $
         \begin{array}{c | c | c | c | c | c | c | c | c | c | c} \hline
@@ -205,21 +220,5 @@ The parts of the graphs in which we see a drop in the bandwidth, if this hypothe
         }
     \caption{GPU node, hyperthreading enabled, latency: 0.43 $\mu$s, bandwidth: 4415 MB/s.}
 \end{figure}
-
-We discuss briefly the results in the four cases taken into account (one thin node with different kinds of process mapping, two thin nodes, one GPU node with hyperthreading enabled). In the tables we show the following quantities:
-\begin{itemize}
-    \item $N, N_x, N_y, N_z$: respectively the total number of processes, the number of processes along the first, second and third axis;
-    \item $k$: the number of axes such that the number of processors along that axis is different than one, multiplied by two;
-    \item $C(L,N)$[MBytes]: the maximum data volume which transferrable on each node nework link;
-    \item $T_c(L,N)$: the time it takes to communicate the halo on average;
-    \item $\tilde{P}(L,N)$[MLUP/s]: MLUP per second predicted by the model, represents the number of grid cells treated per unit of time;
-    \item $P(L,N)$[MLUP/s]: MLUP per second measured on Orfeo.
-\end{itemize}
-
-We also show the predicted and measured weak scalability in the last two columns. Predicted quantities are highlighted with a "tilde", therefore $\tilde(P)(L,N)$ represents the predicted number of MLUP/s.
-
-It is clear that the model is able to recognize the evolution of the function of interest in most cases, except for the case in which we use a GPU node with hyperthreading enabled. We may theorize that the problem in this case is the fact that the model is very simple and does not take into account the effects of using hyperthreading, which also determine a very bad scalability.
-
-However, the model overestimates $P(L,N)$, which then results in an overestimation of weak scalability (which you can see in the second to last column of our tables). Since the model "looks reasonable", and since the contribution given by the application of Jacobi's algorithms is definitely constant as the number of processors increase (and almost equal for all the processors), we may assume that the problem is inside the communication time component. Since latency has very little influence in our case, due to the size of the halos to be passed across the processes, we may theorize that the problem resides in an overestimation of the bandwidth of the machines in which we run the Jacobi solver.
 
 \end{document}
