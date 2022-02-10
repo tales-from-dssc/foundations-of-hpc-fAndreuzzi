@@ -31,12 +31,14 @@
 *.out
 *.app
 
-*.aux
-*.log
-*.pdf
-*.synctex.gz
+**/**.aux
+**/**.log
+**/**.pdf
+**/**.synctex.gz
 **/__latexindent_temp.tex
-*.fls
-*.fdb_latexmk
+**/**.fls
+**/**.fdb_latexmk
+**/**.bbl
+**/**.blg
 
 *.npy
