@@ -1,0 +1,24 @@
+\begin{thebibliography}{1}
+
+\bibitem{bentley1975multidimensional}
+Jon~Louis Bentley.
+\newblock Multidimensional binary search trees used for associative searching.
+\newblock {\em Communications of the ACM}, 18(9):509--517, 1975.
+
+\bibitem{dagum1998openmp}
+Leonardo Dagum and Ramesh Menon.
+\newblock Openmp: an industry standard api for shared-memory programming.
+\newblock {\em Computational Science \& Engineering, IEEE}, 5(1):46--55, 1998.
+
+\bibitem{mpi}
+Message~P Forum.
+\newblock Mpi: A message-passing interface standard.
+\newblock Technical report, USA, 1994.
+
+\bibitem{skrodzki2019kd}
+Martin Skrodzki.
+\newblock The kd tree data structure and a proof for neighborhood computation
+  in expected logarithmic time.
+\newblock {\em arXiv preprint arXiv:1903.04936}, 2019.
+
+\end{thebibliography}
