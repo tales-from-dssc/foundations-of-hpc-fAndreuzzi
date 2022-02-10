@@ -14,7 +14,7 @@
 \usepackage{amssymb}
 
 \usepackage{tikz}
-\usetikzlibrary{positioning,matrix, arrows.meta}
+\usetikzlibrary{positioning,matrix, arrows.meta, patterns}
 
 \newcommand{\kdtree}{\emph{k}-d tree}
 \newcommand{\Mod}[1]{\ (\mathrm{mod}\ #1)}
@@ -154,15 +154,17 @@ of information about the structure we imposed on the dataset.
 \end{figure}
 
 \section{Parallel algorithm and implementation} \label{sec:algorithm}
-First of all we briefly describe the parallel algorithm; then we procede
-with some words and motivations regarding how we represented the dataset in our
-code and which data structures we used.
+First of all we briefly describe the parallel algorithm; then we talk a little
+bit about some technicalities needed to glue everything in the two frameworks
+taken into account; then we procede with some words and motivations regarding
+how we represented the dataset in our code and which data structures we used.
 
+\subsection{Algorithm}
 The algorithm is a very simple codification of the definition proposed in
 Section \ref{sec:intro}:
 \begin{algorithm}
     \SetAlgoLined
-    \caption{An algorithm with caption}\label{alg:parallel_algorithm}
+    \caption{Parallel \kdtree{} growth}\label{alg:parallel_algorithm}
     \KwData{$P = \{p_1, \dots, p_n\}, \ell$}
     $i \gets i(\ell)$ like in (\ref{eq:axis_criteria})\; \label{alg:first}
     Find the median point $p_m$ against the axis $i$\;
@@ -185,6 +187,7 @@ and right branch. This kind of setting requires a more refined approach if
 MPI is used (OpenMP is quite convenient in this case), and we will now spend
 some words on this.
 
+\subsection{The problem of the ``next'' rank}
 Whenever we want to communicate something from an MPI process to another, we
 need to know precisely what we want to send and what's the thread
 (i.e. the rank) we want to communicate with. Since in principle we are going to
@@ -316,18 +319,173 @@ branches they spawned, while the other processes receive only one. From now on
 we do not have other MPI processes, therefore the computation proceeds serially.
 
 As we mentioned earlier OpenMP does not requires these technicalities since we
-employed OpenMP \emph{Tasks} to parallelize the computation. Everytime we need
+employed OpenMP \emph{Tasks} to parallelize the computation. Each time we need
 to assign a branch to another thread we just spawn a new task, and then process
 the remaining branch on this thread. We employed the modifier \texttt{final}
 to disable spawning new tasks when we know that no more threads are available
-since this would have stallen those tasks until a new thread is available; also
-spawning OpenMP tasks without control usually leads to worse performance due the
-incremented orchestration work \cite{hager2010introduction}. Checking whether
-new threads are available is done almost in the same way we presented above
-(even though we do not need to compute the rank of the next threads). The same
-mechanism of \texttt{surplus\_workers} is employed to overcome the issues which
-emerges when the number of parallel workers is not exactly the sum of consecutive
-powers of 2 starting from 1.
+since otherwise the newly spawned task would have stallen until a new thread
+became available; also spawning OpenMP tasks without control usually leads to
+worse performance due the incremented orchestration overhead
+\cite{hager2010introduction}. Checking whether new threads are available is done
+almost in the same way we presented above (even though we do not need to compute
+the rank of the next threads). The same mechanism of \texttt{surplus\_workers}
+is employed to overcome the issues which emerges when the number of parallel
+workers is not exactly the sum of consecutive powers of 2 starting from 1.
+
+\subsection{Merging}
+Another difficulty in the usage of MPI is the fact that each process that
+delegated one or more branches to other MPI processes needs to recover somehow
+the portion of tree produced by the child processes. This operation is analogous
+to the \texttt{merge} subroutine which is used in common implementations of
+\emph{Merge-Sort} \cite{cormen2009introduction}. Indeed in our code the function
+which encapsulates this operation is called \texttt{merge\_kd\_trees}. Note that
+\emph{merging} is not required if we use OpenMP, unless we employ some
+particular strategy for writing into the 1D array which represents the
+\kdtree{}, on which we are going to spend some words in the last part of this
+Section.
+
+Summing up, the abstract algorithm for the growth of \kdtree{} (for which we
+presented a very general pseudocode in Algorithm \ref{alg:parallel_algorithm})
+must be extended as follows if MPI is used:
+
+\begin{algorithm}[H]
+    \SetAlgoLined
+    \KwData{$P = \{p_1, \dots, p_n\}, \ell$, \texttt{m\_rank}}
+    \caption{Parallel \kdtree{} growth (MPI)}\label{alg:parallel_algorithm_mpi}
+    Run Algorithm \ref*{alg:parallel_algorithm}\;
+    \texttt{KDT} $\gets$ \kdtree{} rooted in the first fully serial level computed by \texttt{m\_rank}\;
+    \ForEach{$r \in \mathcal{C}_{\texttt{m\_rank}}^{-1}$}
+        {
+            \texttt{right\_kdt} $\gets$ \kdtree{} generated by process $r$\;
+            \texttt{KDT} $\gets$ \texttt{merge\_kd\_trees}(\texttt{KDT}, \texttt{right\_kdt})\;
+        }
+\end{algorithm}
+
+As you can see we procede in a bottom-up fashion and locate the first fully
+serial level computed by this process (i.e. the first level of the \kdtree{}
+such that no branches have been delegated to another process). Then we procede
+towards the root of the \kdtree{} querying the processes which received some
+branch from \texttt{m\_rank} for the result of their computation. Note that
+$\mathcal{C}_{\texttt{m\_rank}}$ is the list of child processes of
+\texttt{m\_rank}, and $\mathcal{C}_{\texttt{m\_rank}}^{-1}$ means that we
+traverse that list in reverse order (i.e. the last inserted child is the first
+to be queried).
+
+\subsection{Fixing \emph{false-sharing}}
+Not only MPI determines more techical challenges than expected: OpenMP does too.
+Until this point we managed to stay very high level ignoring technical details
+like, for instance, how the \kdtree{} is stored in the memory of a process. We
+now state that the in-memory representation is a 1D array of
+\texttt{std::optional<DataPoint>}. \texttt{DataPoint} is a class which contains
+a simple 1D array, of \texttt{float} or \texttt{double} values depending on a
+compilation flag, and defines come convenient methods which are used to simplify
+the code. We decided to use \texttt{std::optional} since in principle some
+values of the tree might be empty: this happens because we enforce the rule that
+all the nodes of the \kdtree{} (except the leaves) must have exactly two
+children. We made this decision in order to simplify the communication protocol
+between different MPI processes/OMP threads. However these details might be
+ignored since they do not determine any particular performance improvement, and
+are mere design choices. For this reason from now on we're going to consider
+the ``local'' \kdtree{} (i.e. that grown by a single parallel worker) as a 1D
+simple array of ``points''.
+
+Inside this 1D array, $2^\ell$ consecutive points represents a level of the
+tree, where $\ell$ is the depth (i.e. distance from the root) of the level.
+It has been experimentally observed (via the operator \texttt{sizeof}) that when
+the data type is \texttt{float} and each data point has three components, each
+item in the 1D array has size 16 bytes. We visualize this setting in the
+following image (each $p_i$ in this case is an ``empty spot'' to be filled with
+a data point from the dataset):
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=green!20]|$p_1$ & |[draw,fill=yellow!20]|$p_2$ & |[draw,fill=yellow!20]|$p_3$ & |[draw,fill=magenta!20]|$p_4$ & |[draw,fill=magenta!20]|$p_5$ & |[draw,fill=magenta!20]|$p_6$ & |[draw,fill=magenta!20]|$p_7$ & |[draw,fill=blue!20]|$p_8$ & |[draw,fill=blue!20]|$p_9$ & |[draw,fill=blue!20]|$p_{10}$ & |[draw,fill=blue!20]|$p_{11}$ & |[draw,fill=blue!20]|$p_{12}$ & |[draw,fill=blue!20]|$p_{13}$ & |[draw,fill=blue!20]|$p_{14}$ & |[draw,fill=blue!20]|$p_{15}$\\
+                16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16 & 16\\};
+    \end{tikzpicture}
+\end{figure}
+
+We now observe that the \emph{naive} write mode is very inconvenient for OpenMP,
+if the 1D array which represents the \kdtree{} is shared among all the parallel
+OMP threads. ``\emph{naive} write mode'' means that each thread writes all the
+points in their proper location inside the 1D array. This means that we could
+virtually observe all the OMP threads writing in the same \kdtree{} level at
+the same time, in different cells of the array though. However if we consider
+a cache line to be 128 bytes long, this means that we could have 8 OMP threads
+writing concurrently to that same memory address window, which results in very
+poor performance when we take into account cache coherency
+\cite{hager2010introduction}. Note that this is definitely not a problem if we
+use MPI, since memory is distributed rather than shared.
+
+In order to fix \emph{false-sharing} we introduced a compilation flag
+(\texttt{ALTERNATIVE\_SERIAL\_WRITE}) which allows to select a different write
+mode which minimzes the number of concurrent writes on addresses which might
+belong to the same cache line. We briefly describe this method using some
+images. Let's consider again the 1D array depicted above.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=green!20]|$p_1$ & |[draw,fill=green!20]|$p_2$ & |[draw,fill=green!20]|$p_3$ & |[draw,fill=green!20]|$p_4$ & |[draw,fill=green!20]|$p_5$ & |[draw,fill=green!20]|$p_6$ & |[draw,fill=green!20]|$p_7$ & |[draw,fill=green!20]|$p_8$ & |[draw,fill=green!20]|$p_9$ & |[draw,fill=green!20]|$p_{10}$ & |[draw,fill=green!20]|$p_{11}$ & |[draw,fill=green!20]|$p_{12}$ & |[draw,fill=green!20]|$p_{13}$ & |[draw,fill=green!20]|$p_{14}$ & |[draw,fill=green!20]|$p_{15}$\\};
+            \foreach \i [evaluate=\i as \ni using {int(\i)},
+                evaluate=\i as \ntext using {int(\i-1)}] in {1}
+                \draw [{Stealth}-, red!70] (A-1-\ni.south west)--++(-90:5mm) node[below] {0};
+    \end{tikzpicture}
+\end{figure}
+
+The OMP thread \texttt{thread0} is assigned the dataset $P$ and has the duty to
+fill the big green array above in such a way that it's easy to recover the
+\kdtree{} corresponding to $P$ afterwards. Therefore it dermines the median
+point and splits $P$ into $P_1$ and $P_2$. It also places the median point into
+$p_1$. In order to reduce the number of concurrent write on the same cache line,
+we divide the remaining array in two halves, and we make sure that only
+\texttt{thread0} (and its descendants) can write in the left part, and only
+\texttt{thread1} (and its descendants) can write on the right part (we assume
+that \texttt{thread1} takes on the task associated with right branch $P_2$).
+The situation now looks like this:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,pattern=north west lines]|$p_1$ & |[draw,fill=green!20]|$p_2$ & |[draw,fill=green!20]|$p_3$ & |[draw,fill=green!20]|$p_4$ & |[draw,fill=green!20]|$p_5$ & |[draw,fill=green!20]|$p_6$ & |[draw,fill=green!20]|$p_7$ & |[draw,fill=green!20]|$p_8$ & |[draw,fill=blue!20]|$p_9$ & |[draw,fill=blue!20]|$p_{10}$ & |[draw,fill=blue!20]|$p_{11}$ & |[draw,fill=blue!20]|$p_{12}$ & |[draw,fill=blue!20]|$p_{13}$ & |[draw,fill=blue!20]|$p_{14}$ & |[draw,fill=blue!20]|$p_{15}$\\};
+            \foreach \i [evaluate=\i as \ni using {int(\i)},
+                evaluate=\i as \ntext using {int(\i-1)}] in {2,9}
+                \draw [{Stealth}-, red!70] (A-1-\ni.south west)--++(-90:5mm) node[below] {1};
+    \end{tikzpicture}
+\end{figure}
+
+We keep writing the median point on the first memory address in the subset
+assigned to the thread, and then splitting the remaining memory between the two
+threads that process left and right branches:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,pattern=north west lines]|$p_1$ & |[draw,pattern=north west lines]|$p_2$ & |[draw,fill=green!20]|$p_3$ & |[draw,fill=green!20]|$p_4$ & |[draw,fill=green!20]|$p_5$ & |[draw,fill=orange!20]|$p_6$ & |[draw,fill=orange!20]|$p_7$ & |[draw,fill=orange!20]|$p_8$ & |[draw,pattern=north west lines]|$p_9$ & |[draw,fill=blue!20]|$p_{10}$ & |[draw,fill=blue!20]|$p_{11}$ & |[draw,fill=blue!20]|$p_{12}$ & |[draw,fill=violet!20]|$p_{13}$ & |[draw,fill=violet!20]|$p_{14}$ & |[draw,fill=violet!20]|$p_{15}$\\};
+            \foreach \i [evaluate=\i as \ni using {int(\i)},
+                evaluate=\i as \ntext using {int(\i-1)}] in {3,6,10,13}
+                \draw [{Stealth}-, red!70] (A-1-\ni.south west)--++(-90:5mm) node[below] {2};
+    \end{tikzpicture}
+\end{figure}
+
+This is not very meaningful when the number of points in the levels of the tree
+are small like in this example, but the situation changes radically as we
+increase the height of the \kdtree{}. Clearly we need to re-write the \kdtree{}
+in the expected form afterwards: this is something that may reduce, or even
+nullify, the performance gains which we get by removing \emph{false-sharing}.
+
+Another possible solution is introducing some \emph{padding}
+\cite{hager2010introduction}, i.e. artificially augmenting the number of
+components for each data point in order to reduce the number of threads possibly
+writing on the same cache line . For instance, if we manage to increase the size
+of each item in the array from 16 to 64 bytes rwe would risk writing
+concurrently on the same cache line with two threads instead of eight.
 
 \section{Performance model and results}
 
