@@ -531,7 +531,7 @@ took about 163\% the time needed to grow the tree before the modification on the
 same dataset. For this reason we decided to pause this improvement, a profiler
 could probably tell us what's happening inside the code.
 
-\section{Performance model and results}
+\section{Performance model and results} \label{sec:performance}
 On the basis of the discussion we developed in Section \ref{sec:algorithm} we
 propose the following performance model, which we are going to compare against
 the experimental results we obtained in several runs of our code:
@@ -620,95 +620,306 @@ express a simplified model based on the assumptions we stated above:
 \begin{gather*}
     T(P,N) = \begin{cases}
         (1+\alpha(P)) \beta \frac{N}{\hat{P}} \log \frac{N}{\hat{P}} + 2\texttt{comm}(P,N) + (\gamma_1 + \gamma_2) N \left(2 - \frac{1}{\hat{P}}\right) &\text{(MPI)}\\
-        (1+\alpha(P)) \beta \frac{N}{\hat{P}} \log \frac{N}{\hat{P}} + \gamma_1 N \left(2 - \frac{1}{\hat{P}}\right) &\text{(OpenMP)}
+        (1+\alpha(P)) \beta \frac{N}{\hat{P}} \log \frac{N}{\hat{P}} + \gamma_1 N \left(2 - \frac{1}{\hat{P}}\right) + \texttt{hidden}(P,N) &\text{(OpenMP)}
     \end{cases}
 \end{gather*}
+Note that we added an ``hidden cost'' term in OpenMP to remind that OpenMP isn't
+just ``MPI \emph{minus} communication'', and the experimental results are going
+to remark strongly this fact.
 
-This model testifies that in our experimental results, as we increase the number
+The model testifies that in our experimental results, as we increase the number
 of parallel workers $P$, we should observe a steep improvement of the
 performance each time $P$ becomes a power of 2. However, the incidence of this
 improvement depends on the cost of communication in the MPI case, while in the
 OpenMP case the model is most likely unprecise due to unquantified hidden
 costs.
 
-\subsection{Strong scaling}
-\begin{figure}[b!]
-    \begin{tikzpicture}
-        \begin{axis}[
-            xtick={1,2,4,8,16,24},
-            grid=both,
-            ylabel={Seconds},
-            xlabel={\# Parallel workers},
-            legend cell align={left}
-        ]
-        \addplot table[x index=0, y index=1] {plots_data/big_dataset.txt};
-        \addplot table[x index=0, y index=2] {plots_data/big_dataset.txt};
+Another aspect which remains unexplained by this model is the decrease of
+execution time which we are going to observe in the following sections when
+we increase the number of parallel workers to a number which is not a power of
+2 (for instance, see Figure \ref{fig:strong_scaling}). This is most likely due
+to the fact that parallel workers are not working equally fast. This means
+that waiting for the computation of the additional (i.e. non-parallelizable)
+level of 5 or 6 workers is practically not the same of waiting for the
+computation of the additional level of 1 worker, since in the former case the
+probability of having a slower worker is much higher. The slower worker is a
+\emph{bottleneck}, therefore increasing the number of workers (even though we
+do not reach the next power of 2) reduces the probability of having a
+bottleneck which stalls the other processes waiting for its portion of the
+dataset.
 
-        \legend{MPI, OpenMP}
-        \end{axis}
-    \end{tikzpicture}
+\subsection{\emph{Strong} and \emph{weak} scalability}
+\begin{figure}[t!]
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={Seconds},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Time needed to grow the \kdtree{}.},
+                y label style={at={(axis description cs:0.05,0.5)}}
+            ]
+            \addplot table[x index=0, y index=1] {plots_data/big_dataset.txt};
+            \addplot table[x index=0, y index=2] {plots_data/big_dataset.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{1cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={$T(1) / T(P)$},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Parallel speedup (and scalability).},
+                legend style={at={(0.5,0.3)},anchor=west},
+                y label style={at={(axis description cs:0.08,0.5)}}
+            ]
+            \addplot table[x index=0, y index=3] {plots_data/big_dataset.txt};
+            \addplot table[x index=0, y index=4] {plots_data/big_dataset.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+\caption{Strong scaling of the growth of a \kdtree{} ($N = $ 100'000'000).}
+\label{fig:strong_scaling}
+\end{figure}
+First of all we briefly discuss the \emph{strong scaling} of our code, namely
+the performance gain given by the introduction of additional parallel workers
+while the problem size stays constant. As you can see in Figure
+\ref{fig:strong_scaling} we observe the behavior we expected after the
+inspection of the simplified model (i.e. steep improvement everytim we add $2^k$
+processors). Also, we observe that the hidden cost of OpenMP is definitely
+not negligible. The slight instability in the OpenMP line could probably mean
+that some OMP threads have been paused and assigned to other tasks.
+
+Note that in this case we observe the effect we forecasted (and explained) in
+the last paragraph of the introduction to Section \ref{sec:performance}, i.e.
+the improvement of performance even if the number of parallel workers is not
+a power of 2.
+
+\begin{figure}[b!]
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={Seconds},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Time needed to grow the \kdtree{}.},
+                legend style={at={(0.2,0.8)},anchor=west},
+                y label style={at={(axis description cs:0.05,0.5)}}
+            ]
+            \addplot table[x index=0, y index=1] {plots_data/weak_scalability.txt};
+            \addplot table[x index=0, y index=2] {plots_data/weak_scalability.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{1cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={$P T(1) / T(P)$},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Weak scalability, $\alpha = 1$.},
+                legend style={at={(0.5,0.2)},anchor=west},
+                y label style={at={(axis description cs:0.05,0.5)}}
+            ]
+            \addplot table[x index=0, y index=3] {plots_data/weak_scalability.txt};
+            \addplot table[x index=0, y index=4] {plots_data/weak_scalability.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \caption{Weak scaling of the growth of a \kdtree{} for a linearly varying number of elements.}
+    \label{fig:weak_scaling}
+\end{figure}
+In order to evaluate the \emph{weak scaling} of our implementation, We generated
+a set $\mathcal{D} = \{d_1.csv, \dots, d_24.csv\}$ comprising 24 datasets having
+varying sizes, such that \texttt{len}$(d_i) = i * 1000000$. With respect to
+\cite[Chapter~5.3.2]{hager2010introduction} we choose $\alpha = 1$. Then we
+measured for a number of parallel workers going from 1 to 24 the time needed to
+grow the \kdtree{}, and computed for each run the \emph{parallel performance}
+$P^i = \frac{\text{Work}}{\text{Time}} = \frac{i * 1000000}{T^i}$. Finally we
+computed the weak scalability $S_w^i = \frac{P^s}{P^i} = i \frac{T^s}{T^i}$ for
+the numbers of parallel workers taken into account (both for MPI and OpenMP).
+Our results are shown in Figure \ref{fig:weak_scaling}.
+
+As expected the most ``performant'' points with respect to the varying workload
+are those where the number of parallel workers is a power of 2: in those cases
+the workload is equally distributed among all the workers, which results in a
+local maximum of the weak scalability plot. Also, we recall the effect we
+talked about in the final part of the introduction of Section
+\ref{sec:performance}, which is observable also in the weak scaling plot. Indeed
+we see a slight improvement (after a steep worsening) of weak scaling as the
+number of parallel workers increase, even if its not a power of 2.
+
+\subsection{Other performance experiments}
+\begin{figure}[t!]
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.8]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={Seconds},
+                xlabel={$P$},
+                legend cell align={left},
+                ymode=log,
+                title={MPI}
+            ]
+            \addplot table[x index=0, y index=1] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=2] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=3] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=4] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=5] {plots_data/opt_flags.txt};
+
+            \legend{\texttt{-O0}, \texttt{-O1}, \texttt{-O2}, \texttt{-O3}, \texttt{-O3 -march=native}}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{2cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.8]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                xlabel={$P$},
+                legend cell align={left},
+                ymode=log,
+                yticklabels={,,},
+                title={OpenMP}
+            ]
+            \addplot table[x index=0, y index=6] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=7] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=8] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=9] {plots_data/opt_flags.txt};
+            \addplot table[x index=0, y index=10] {plots_data/opt_flags.txt};
+
+            \legend{\texttt{-O0}, \texttt{-O1}, \texttt{-O2}, \texttt{-O3}, \texttt{-O3 -march=native}}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \caption{Performance determined by compilation with different compiler optimization flags.}
+    \label{fig:compiler_opt_flags}
 \end{figure}
 
-\subsection{Weak scaling}
+\begin{figure}[b!]
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={Seconds},
+                xlabel={$P$},
+                legend cell align={left},
+                title={MPI},
+                legend style={at={(0.2,0.8)},anchor=west},
+                y label style={at={(axis description cs:0.05,0.5)}}
+            ]
+            \addplot table[x index=0, y index=1] {plots_data/big_data.txt};
+            \addplot table[x index=0, y index=3] {plots_data/big_data.txt};
 
-\subsection{Compiler optimization flags}
+            \legend{\texttt{float}, \texttt{double}}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{1cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,2,4,8,16,24},
+                grid=both,
+                ylabel={$P T(1) / T(P)$},
+                xlabel={$P$},
+                legend cell align={left},
+                title={OpenMP},
+                legend style={at={(0.5,0.5)},anchor=west},
+                y label style={at={(axis description cs:0.05,0.5)}}
+            ]
+            \addplot table[x index=0, y index=2] {plots_data/big_data.txt};
+            \addplot table[x index=0, y index=4] {plots_data/big_data.txt};
+
+            \legend{\texttt{float}, \texttt{double}}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \caption{Time measured for the growth of a \kdtree{} ($N = $ 100'000'000).}
+    \label{fig:double_data_type}
+\end{figure}
+
 We comment a little bit the effect of compiler optimization flags on the
 performance of the code. As you can see in Figure \ref{fig:compiler_opt_flags}
 there is a clear improvement when the flag \texttt{-O1} is used, but further
 flags do not enable any particular speedup. In particular
 \texttt{-O3 -march=native} is also somehow less regular than the other
 compilations.
+
+Another interesting experiment concerns the usage of \texttt{double} instead of
+\texttt{float} values (which have been used until now in the experiments). Using
+\texttt{double} values allows the digital representation of a bigger variety
+of datasets, but this comes at an increased computational cost. We structured
+the code in order to enable the user to choose which data type should be used
+on compile time. In Figure \ref{fig:double_data_type} we show the difference
+in time determined by the data type chosen.
+
+The difference is not so clear in the OpenMP case, but it becomes noticeable
+when MPI is used: this is most likely due to the fact that communication cost
+becomes much more costly in the latter case.
+
+Finally, we present the results obtained using the approach discussed in Section
+\ref{sec:false_sharing}, which is aimed to fixing the problem of
+\emph{false-sharing}. Since this is peculiar of the OpenMP case we are not going
+to show any result using MPI. As you can see the ``Fix'' is initially less
+performant than the default version, since as we mentioned earlier the approach
+involves an additional scan of the 1D array which represents the tree in
+memory. However, the approach starts paying the effort as the number of OMP
+threads (i.e. the number of workers which could write concurrently on the same
+cache line) increases.
+
 \begin{figure}[t!]
-    \makebox[\textwidth][c]{
-        \centering
-        \begin{subfigure}[b]{0.6\textwidth}
-            \centering
-            \begin{tikzpicture}
-                \begin{axis}[
-                    xtick={1,2,4,8,16,24},
-                    grid=both,
-                    ylabel={Seconds},
-                    xlabel={\# Parallel workers},
-                    legend cell align={left},
-                    ymode=log,
-                    title={MPI}
-                ]
-                \addplot table[x index=0, y index=1] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=2] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=3] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=4] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=5] {plots_data/opt_flags.txt};
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            xtick={1,2,4,8,16,24},
+            grid=both,
+            ylabel={Seconds},
+            xlabel={$P$},
+            legend cell align={left},
+            ymode=log,
+        ]
+        \addplot table[x index=0, y index=1] {plots_data/false_sharing.txt};
+        \addplot table[x index=0, y index=2] {plots_data/false_sharing.txt};
 
-                \legend{\texttt{-O0}, \texttt{-O1}, \texttt{-O2}, \texttt{-O3}, \texttt{-O3 -march=native}}
-                \end{axis}
-            \end{tikzpicture}
-        \end{subfigure}
-        \hspace{1cm}
-        \begin{subfigure}[b]{0.6\textwidth}
-            \centering
-            \begin{tikzpicture}
-                \begin{axis}[
-                    xtick={1,2,4,8,16,24},
-                    grid=both,
-                    xlabel={\# Parallel workers},
-                    legend cell align={left},
-                    ymode=log,
-                    yticklabels={,,},
-                    title={OpenMP}
-                ]
-                \addplot table[x index=0, y index=6] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=7] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=8] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=9] {plots_data/opt_flags.txt};
-                \addplot table[x index=0, y index=10] {plots_data/opt_flags.txt};
-
-                \legend{\texttt{-O0}, \texttt{-O1}, \texttt{-O2}, \texttt{-O3}, \texttt{-O3 -march=native}}
-                \end{axis}
-            \end{tikzpicture}
-        \end{subfigure}
-    }
-    \caption{Performance after the compilation with compiler optimization flags.}
-    \label{fig:compiler_opt_flags}
+        \legend{With \emph{false-sharing}, Fix}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Testing the method presented in Section \ref{sec:false_sharing} to fix \emph{false-sharing} in OpenMP.}
 \end{figure}
 
 \section{Conclusions and further developments}
