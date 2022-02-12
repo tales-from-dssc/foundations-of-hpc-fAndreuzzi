@@ -487,6 +487,50 @@ writing on the same cache line . For instance, if we manage to increase the size
 of each item in the array from 16 to 64 bytes rwe would risk writing
 concurrently on the same cache line with two threads instead of eight.
 
+\subsection{Improving the memory access pattern}
+The most computationally intensive line in our code is the call to
+\texttt{std::nth\_element} which is used to find the median element of a set of
+points in a branch. This function is called exactly one time per branch, and its
+computational complexity is $O(n)$. But rather than the computational complexity
+we look at the memory access pattern: a bad access pattern is capable to ruin
+performances potentially worse than an excessive complexity
+\cite{hager2010introduction}. This is particularly true since the body of the
+function \texttt{std::nth\_element} involves multiple comparisons between the
+data points in the branch against the chosen axis $i$. Since we're only
+interested in the $i$-th component for those comparisons, storing and accessing
+the data points in this way:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=red!20]|$p_1[0]$ & |[draw,fill=red!20]|$p_1[1]$ & |[draw,fill=red!20]|$p_1[2]$ & |[draw,fill=green!20]|$p_2[0]$ & |[draw,fill=green!20]|$p_2[1]$ & |[draw,fill=green!20]|$p_2[2]$ & |[draw,fill=violet!20]|$p_3[0]$ & |[draw,fill=violet!20]|$p_3[1]$ & |[draw,fill=violet!20]|$p_3[2]$ & |[draw,fill=teal!20]|$p_4[0]$ & |[draw,fill=teal!20]|$p_4[1]$ & |[draw,fill=teal!20]|$p_4[2]$\\};
+    \end{tikzpicture}
+\end{figure}
+is probably suboptimal, since every time we access $p_k[i]$ we load in the cache
+a nearboroughood of $p_k[i]$, i.e. $p_k[i-1], p_k[i+1], \dots$.
+For this reason we decided to try a different arrangement in memory. A new
+copy of the array of data points was needed since we receive the data from the
+``user'' in a 1D array which looks like the one in the image above. We depict
+the new arrangement:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=red!20]|$p_1[0]$ & |[draw,fill=green!20]|$p_2[0]$ & |[draw,fill=violet!20]|$p_3[0]$ & |[draw,fill=teal!20]|$p_4[0]$ & |[draw,fill=red!20]|$p_1[1]$ & |[draw,fill=green!20]|$p_2[1]$ & |[draw,fill=violet!20]|$p_3[1]$ & |[draw,fill=teal!20]|$p_4[1]$ & |[draw,fill=red!20]|$p_1[2]$ & |[draw,fill=green!20]|$p_2[2]$ & |[draw,fill=violet!20]|$p_3[2]$ & |[draw,fill=teal!20]|$p_4[2]$\\};
+    \end{tikzpicture}
+\end{figure}
+Now a call to \texttt{std::nth\_element} would most likely have a much smaller
+number of \emph{cache misses}, since the ``interesting'' addresses in the array
+below (for a given axis $i$) are close to each other in memory.
+
+This approach did not pay unfortunately, since a single experiment with 8 MPI
+processes and a dataset of 100'000'000 data points each having 3 components
+took about 163\% the time needed to grow the tree before the modification on the
+same dataset. For this reason we decided to pause this improvement, a profiler
+could probably tell us what's happening inside the code.
+
 \section{Performance model and results}
 
 \section{Conclusions}
