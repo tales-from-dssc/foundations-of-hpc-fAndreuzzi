@@ -1,23 +1,5 @@
 \documentclass{article}
-\usepackage{tabularx,ragged2e,booktabs,caption}
-\usepackage{graphicx}
-\usepackage{float}
-\usepackage{hyperref}
-\usepackage{array}
-\usepackage{graphicx}
-\graphicspath{{imgs/}}
-\usepackage{amsmath}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{hyperref}
-\usepackage[ruled,linesnumbered]{algorithm2e}
-\usepackage{amssymb}
-
-\usepackage{tikz}
-\usetikzlibrary{positioning,matrix, arrows.meta, patterns}
-
-\newcommand{\kdtree}{\emph{k}-d tree}
-\newcommand{\Mod}[1]{\ (\mathrm{mod}\ #1)}
+\input{preamble}
 
 \title{Implementation of a \kdtree{} using MPI and OpenMP}
 \author{Francesco Andreuzzi}
@@ -373,21 +355,39 @@ to be queried).
 
 \subsection{Fixing \emph{false-sharing}}
 Not only MPI determines more techical challenges than expected: OpenMP does too.
-Until this point we managed to stay very high level ignoring technical details
+Until now we managed to stay very high level ignoring technical details
 like, for instance, how the \kdtree{} is stored in the memory of a process. We
 now state that the in-memory representation is a 1D array of
 \texttt{std::optional<DataPoint>}. \texttt{DataPoint} is a class which contains
-a simple 1D array, of \texttt{float} or \texttt{double} values depending on a
-compilation flag, and defines come convenient methods which are used to simplify
-the code. We decided to use \texttt{std::optional} since in principle some
-values of the tree might be empty: this happens because we enforce the rule that
-all the nodes of the \kdtree{} (except the leaves) must have exactly two
-children. We made this decision in order to simplify the communication protocol
-between different MPI processes/OMP threads. However these details might be
-ignored since they do not determine any particular performance improvement, and
-are mere design choices. For this reason from now on we're going to consider
-the ``local'' \kdtree{} (i.e. that grown by a single parallel worker) as a 1D
-simple array of ``points''.
+a pointer to a 1D array of \texttt{float} or \texttt{double} values (depending
+on a compilation flag). This pointer points to the appropriate position inside a
+big 1D array of values which contains all the components of all the datapoints
+(note that this means that each \texttt{DataPoint} does not ``own'' its data, so
+it's not responsible of deleting). We depict this setting in an image to
+clarify:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=red!20]|$p_1[0]$ & |[draw,fill=red!20]|$p_1[1]$ & |[draw,fill=red!20]|$p_1[2]$ & |[draw,fill=green!20]|$p_2[0]$ & |[draw,fill=green!20]|$p_2[1]$ & |[draw,fill=green!20]|$p_2[2]$ & |[draw,fill=violet!20]|$p_3[0]$ & |[draw,fill=violet!20]|$p_3[1]$ & |[draw,fill=violet!20]|$p_3[2]$ & |[draw,fill=teal!20]|$p_4[0]$ & |[draw,fill=teal!20]|$p_4[1]$ & |[draw,fill=teal!20]|$p_4[2]$\\};
+        \draw [{Stealth}-, red!70] (A-1-1.south west)--++(-90:5mm) node[below] {\texttt{dpoint1.data}};
+        \draw [{Stealth}-, red!70] (A-1-4.south west)--++(-90:5mm) node[below] {\texttt{dpoint2.data}};
+        \draw [{Stealth}-, red!70] (A-1-7.south west)--++(-90:5mm) node[below] {\texttt{dpoint3.data}};
+        \draw [{Stealth}-, red!70] (A-1-10.south west)--++(-90:5mm) node[below] {\texttt{dpoint4.data}};
+    \end{tikzpicture}
+\end{figure}
+
+Moreover the class \texttt{DataPoint} defines come convenient methods which are
+used to simplify the code. We decided to use \texttt{std::optional} since in
+principle some values of the tree might be empty: this happens because we
+enforce the rule that all the nodes of the \kdtree{} (except the leaves) must
+have exactly two children. We made this decision in order to simplify the
+communication protocol between different MPI processes/OMP threads. However
+these details might be ignored since they do not determine any particular
+performance improvement, and are mere design choices. For this reason from now
+on we're going to consider the ``local'' \kdtree{} (i.e. that grown by a single
+parallel worker) as a 1D simple array of ``points''.
 
 Inside this 1D array, $2^\ell$ consecutive points represents a level of the
 tree, where $\ell$ is the depth (i.e. distance from the root) of the level.
@@ -532,8 +532,41 @@ same dataset. For this reason we decided to pause this improvement, a profiler
 could probably tell us what's happening inside the code.
 
 \section{Performance model and results}
+On the basis of the discussion we developed in Section \ref{sec:algorithm} we
+propose the following performance model, which we are going to compare against
+the experimental results we obtained in several runs of our code.
 
-\section{Conclusions}
+\begin{tikzpicture}
+    \begin{axis}[
+        xtick={1,2,4,8,16,24},
+        grid=both,
+        ylabel={Seconds},
+        xlabel={\# Parallel workers}
+    ]
+    \addplot table {plots_data/mpi_big_dataset.txt};
+
+    \legend{MPI}
+    \end{axis}
+\end{tikzpicture}
+
+\section{Conclusions and further developments}
+In Section \ref{sec:algorithm} we proposed several technical improvements to
+overcome problems in the frameworks we used to parallelize our code, and
+to improve the usage of the cache hierarchy. Even though those improvements
+look quite reasonable, it seems that they do not enable any particular speedup.
+This may be due to main reasons:
+\begin{itemize}
+    \item We overreacted to some issue which in our case is not awfully
+    problematic;
+    \item The improvement introduced determines a cost in another part of the
+    code which nullifies the performance gain;
+\end{itemize}
+
+For instance, \emph{false-sharing} might not be a huge problem in our case,
+since we write in the 1D array which represents the \kdtree{} exactly once for
+each position. Also, the improvement introduced to reduce \emph{false-sharing}
+requires a new scan of the array (not present in the original code) with
+additional cache problems.
 
 \bibliography{bibfile}
 
