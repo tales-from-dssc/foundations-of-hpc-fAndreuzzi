@@ -12,16 +12,16 @@
 
 \section{Introduction} \label{sec:intro}
 \kdtree{} is an established data structure which enables the use of a
-plethora of efficient algorithms of huge practical interest, such as
-\emph{nearest neighbor queries} \cite{bentley1975multidimensional}. Another
-important aspect is the existence of efficient algorithms which enables updating
-the data structure in response to changes in the dataset (deletion, insertion,
-\dots).
+plethora of efficient algorithms of huge practical interest, for instance
+\emph{search algorithms} and \emph{nearest neighbor queries}
+\cite{bentley1975multidimensional}. Another important aspect is the existence of
+efficient utility algorithms which make quite efficient the update of the data
+structure in response to changes in the dataset (deletion, insertion, \dots).
 
 In this brief report we present and analyze a parallel implementations of
 \kdtree{} which uses two standard frameworks for parallel programming, namely
 OpenMP \cite{dagum1998openmp} (shared memory) and MPI \cite{mpi} (distributed
-memory). Our implementation uses the same approach for parallelization for
+memory). Our implementation uses the same approach for parallelization in
 both cases, even though some compiler-level flags can be used to activate
 different code regions whose goal is to fix performance bottlenecks peculiar of
 a framework (for instance \emph{false-sharing} in OpenMP). We talk
@@ -36,7 +36,7 @@ hypothesis against the real data we extracted from a set of run of the code.
 \section{\kdtree{}}
 Given a set of k-dimensional points $P = \{p^1, \dots, p^n\}$ such that
 $p^i \in \mathbb{R}^k$ we pick a recursive definition of a \kdtree{}
-\cite{skrodzki2019kd}: the node of the tree associated with the set $P$ is given
+\cite{skrodzki2019kd}. The node of the tree associated with the set $P$ is given
 by:
 \begin{gather} \label{eq:recursive_kdtree_definition}
     \text{Node}(P) = \begin{cases}
@@ -50,7 +50,7 @@ $P_1, P_2 \subset P$ are defined as follows:
 \begin{gather*}
     P_1 = \{p \in P \mid p < p_m\} \qquad P_2 = \{p \in P \mid p > p_m\}
 \end{gather*}
-i.e. they are the subsets of points of $P$ which "fall" respectively before
+i.e. they are the subsets of points of $P$ which ``fall'' respectively before
 and after $p_m$ along the i-th axis. For simplicity we assumed that $P$ does not
 contain repeated values, however the definition is easily generalized.
 $\text{Node}(P_1), \text{Node}(P_2)$ in (\ref*{eq:recursive_kdtree_definition})
@@ -137,7 +137,7 @@ of information about the structure we imposed on the dataset.
 \section{Parallel algorithm and implementation} \label{sec:algorithm}
 First of all we briefly describe the parallel algorithm; then we talk a little
 bit about some technicalities needed to glue everything in the two frameworks
-taken into account; then we procede with some words and motivations regarding
+taken into account; finally we procede with some words and motivations regarding
 how we represented the dataset in our code and which data structures we used.
 
 \subsection{Algorithm}
@@ -184,7 +184,7 @@ another MPI process would have needed to:
     \item Establish a communication with the \emph{master};
     \item Receive the rank of a free MPI process;
     \item Establish a communication with the chosen MPI process;
-    \item Send $P_2$;
+    \item Send $P_2$.
 \end{enumerate}
 
 We had the feeling that this kind of setting would have incremented by 2 units
@@ -193,8 +193,9 @@ would have made an MPI process totally unusable to the actual purpose of growing
 the \kdtree{}; however, the code would have been most likely very elegant and
 understandable. Nonetheless we decided to pursue another approach: an
 ``hardcoded'' protocol. A parent process knows right off the bat the rank
-of the child process which is idle and willing to process a branch:
-it can be computed via some very simple arithmetic operations. The code
+of a child process which is idle and willing to process a branch, and only that
+parent process (due to the protocol) is able to communicate with that process.
+The rank is computed via some very simple arithmetic operations. The code
 becomes less readable, but no-one is going to notice since we decided to hide
 this kind of complexity behind a function.
 
@@ -273,13 +274,14 @@ following situation:
     \end{tikzpicture}
 \end{figure}
 
-We now have three idle proccesses, which are clearly not enough to parallelize
-entirely a new level. Even though the performance gain we get by using also
-these \texttt{surplus\_workers} (we have to wait the slowest parts of the
-tree to be completed) we decided to assign them left-to-right to the other
-processes. In this case only \fbox{0}, \fbox{1} and \fbox{2} would get a
-\texttt{surplus\_workers} (respectively \fbox{8}, \fbox{9} and \fbox{10}).
-Therefore the final situation is:
+We now have three idle proccesses (\fbox{8}, \fbox{9}, \fbox{10}), which are
+clearly not enough to parallelize entirely a new level. Even though the
+performance gain we get by using also these \texttt{surplus\_workers} is not
+so influential (we have to wait the slowest parts of the tree to be completed)
+we decided to assign them left-to-right to the other processes. In this case
+only \fbox{0}, \fbox{1} and \fbox{2} would get a \texttt{surplus\_workers}
+(respectively \fbox{8}, \fbox{9} and \fbox{10}). Therefore the final situation
+is:
 
 \begin{figure}[H]
     \centering
@@ -317,7 +319,7 @@ workers is not exactly a power of 2.
 \subsection{Merging}
 Another difficulty in the usage of MPI is the fact that each process that
 delegated one or more branches to other MPI processes needs to recover and
-reconstruct a \kdtree{} starting from the portion of tree produced by the child
+reconstruct a \kdtree{} starting from the portion of tree produced by child
 processes. This operation is analogous to the \texttt{merge} subroutine which is
 used in common implementations of \emph{Merge-Sort}
 \cite{cormen2009introduction}. Indeed in our code the function which
@@ -365,6 +367,14 @@ big 1D array of values which contains all the components of all the datapoints
 (note that this means that each \texttt{DataPoint} does not ``own'' its data, so
 it's not responsible of deleting). We depict this setting in an image to
 clarify:
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \matrix (A) [matrix of nodes, nodes={draw, minimum size=8mm},
+            column sep=-\pgflinewidth]{
+                |[draw,fill=red!20]|\texttt{dpoint1?} & |[draw,fill=green!20]|\texttt{dpoint2?} & |[draw,fill=violet!20]|\texttt{dpoint3?} & |[draw,fill=teal!20]|\texttt{dpoint1?}\\};
+    \end{tikzpicture}
+\end{figure}
 \begin{figure}[H]
     \centering
     \begin{tikzpicture}
@@ -701,9 +711,8 @@ while the problem size stays constant. As you can see in Figure
 inspection of the simplified model (i.e. steep improvement everytime we add
 $2^k$ processors). Also, we observe that the hidden cost of OpenMP is definitely
 not negligible. The slight instability in the OpenMP line could probably mean
-that some OMP threads have been paused and assigned to other tasks.
-
-Note that in this case we can observe the effect we forecasted (and explained)
+that some OMP threads have been paused and assigned to other tasks. Note that
+in this case we can observe the effect we forecasted (and explained)
 in the last paragraph of the introduction to Section \ref{sec:performance}, i.e.
 the improvement of performance even if the number of parallel workers is not
 a power of 2.
@@ -768,11 +777,11 @@ Our results are shown in Figure \ref{fig:weak_scaling}.
 As expected the most ``performant'' points with respect to the varying workload
 are those where the number of parallel workers is a power of 2: in those cases
 the workload is equally distributed among all the workers, which results in a
-local maximum of the weak scalability plot. Also, we recall the effect we
+local maximum of the weak scalability plot. Moreover we recall the effect we
 talked about in the final part of the introduction of Section
-\ref{sec:performance}, which is observable also in the weak scaling plot. Indeed
+\ref{sec:performance}, which is observable also in the weak scaling plot: indeed
 we see a slight improvement (after a steep worsening) of weak scaling as the
-number of parallel workers increase, even if its not a power of 2.
+number of parallel workers increase, even if it is not a power of 2.
 
 \subsection{More measurements}
 \begin{figure}[t!]
@@ -886,11 +895,9 @@ Another interesting experiment concerns the usage of \texttt{double} instead of
 of datasets, but this comes at an increased computational cost. We structured
 the code in order to enable the user to choose which data type should be used
 on compile time. In Figure \ref{fig:double_data_type} we show the difference
-in time determined by the data type chosen.
-
-The difference is not so clear in the OpenMP case, but it becomes noticeable
-when MPI is used: this is most likely due to the fact that communication
-becomes much more costly in the latter case.
+in time determined by the data type chosen. The difference is not so clear in
+the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
+due to the fact that communication becomes much more costly in the latter case.
 
 Finally, we present the results obtained using the approach discussed in Section
 \ref{sec:false_sharing}, which is aimed to fixing the problem of
@@ -933,11 +940,11 @@ In Section \ref{sec:algorithm} we proposed several technical improvements to
 overcome problems in the frameworks we used to parallelize our code, and
 to improve the usage of the cache hierarchy. Even though those improvements
 look quite reasonable, it seems that they do not enable any particular speedup.
-This may be due to main reasons:
+We identified two main reasons to explain this fact:
 \begin{itemize}
     \item We overreacted to some issue which in our case is not awfully
     problematic;
-    \item The improvement introduced determines a cost in another part of the
+    \item The improvement introduced an additional cost in another part of the
     code which nullifies the performance gain.
 \end{itemize}
 For instance, \emph{false-sharing} might not be a huge problem in our case,
@@ -957,9 +964,10 @@ We also tried to join the efforts of MPI and OpenMP in order to deliver the
 maximum possible parallelization. Unfortunately we had to pause the development
 due to some technical problems which occurred in the generation of OMP tasks
 (the parallel region spawned the expected number of threads, but all the tasks
-were assigned to \texttt{thread0}). The work produced can be found in the branch
-\texttt{openmp-plus-mpi} of the repository at
-\href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/openmp-plus-mpi}{link}.
+were assigned to \texttt{thread0}). The work produced in this direction
+can be found in the branch \texttt{openmp-plus-mpi} of the repository at
+\href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/openmp-plus-mpi}{this}
+link.
 
 \bibliography{bibfile}
 
