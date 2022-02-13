@@ -11,22 +11,21 @@
 \bibliographystyle{plain}
 
 \section{Introduction} \label{sec:intro}
-A \kdtree{} is an established data structure which may be used to introduce
-some structure in a dataset. Storing data in such a way enables the use of a
-plethora of efficient algorithms such as \emph{nearest neighbor queries}
-\cite{bentley1975multidimensional} which are of huge practical interest. Another
+\kdtree{} is an established data structure which enables the use of a
+plethora of efficient algorithms of huge practical interest, such as
+\emph{nearest neighbor queries} \cite{bentley1975multidimensional}. Another
 important aspect is the existence of efficient algorithms which enables updating
 the data structure in response to changes in the dataset (deletion, insertion,
 \dots).
 
-In this brief report we present and analyze two parallel implementations of
-\kdtree{} using two standard frameworks for parallel programming, namely OpenMP
-\cite{dagum1998openmp} (shared memory) and MPI \cite{mpi} (distributed memory).
-Our implementation uses quite the same approach for parallelization for both
-cases, even though some compiler-level flags can be used to activate different
-code regions which are more conceived in order to fix performance bottlenecks
-which are peculiar of a particular framework (for instance \emph{false-sharing}
-in OpenMP). We talk briefly about this point below.
+In this brief report we present and analyze a parallel implementations of
+\kdtree{} which uses two standard frameworks for parallel programming, namely
+OpenMP \cite{dagum1998openmp} (shared memory) and MPI \cite{mpi} (distributed
+memory). Our implementation uses the same approach for parallelization for
+both cases, even though some compiler-level flags can be used to activate
+different code regions whose goal is to fix performance bottlenecks peculiar of
+a framework (for instance \emph{false-sharing} in OpenMP). We talk
+briefly about this point below.
 
 First things first: we briefly discuss the data structure and the invariants to
 be maintained. Afterwards we present the very simple parallel algorithm we
@@ -46,8 +45,8 @@ by:
     \end{cases}
 \end{gather}
 where $p_m$ is the median point of $P$ against some axis $i$ which is chosen
-via an unspecified criteria which in some lines. $P_1, P_2 \subset P$ are
-defined as follows:
+via an unspecified criteria that we are going to formalize in some lines.
+$P_1, P_2 \subset P$ are defined as follows:
 \begin{gather*}
     P_1 = \{p \in P \mid p < p_m\} \qquad P_2 = \{p \in P \mid p > p_m\}
 \end{gather*}
@@ -67,11 +66,6 @@ simple function to determine the axis $i$ used to "split" the tree:
 \end{gather}
 where $\ell$ is the current level of the tree (i.e. the distance of the current
 node from the root).
-
-Using a
-\href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/master/visualization}{visualizer tool}
-written in Python which we developed for the occasion, we show the progression
-of the construction of a \kdtree{} for a very simple dataset.
 
 \begin{figure}[b!]
     \makebox[\textwidth][c]{
@@ -97,14 +91,19 @@ of the construction of a \kdtree{} for a very simple dataset.
     \label{fig:kdtree_surfaces_progression}
 \end{figure}
 
-The visualization in Figure \ref{fig:kdtree_surfaces_progression} renders in a
+Using a
+\href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/master/visualization}{visualizer tool}
+written in Python which we developed for the occasion, we show the progression
+of the construction of a \kdtree{} for a very simple dataset. The visualization
+in Figure \ref{fig:kdtree_surfaces_progression} renders in a
 very clear way the fact that points added to the tree in the level $k$ need to
-satisfy constraints given by all the points in the parent branches in levels
-$0, \dots, k-1$. Each surface is the plane containing one of the points
-added to the tree in the current level, which divides the volume dedicated to
-the corresponding branch in two halves which shall contain all the other points
-(respectively) in the left and right branch. This is almost a visual
-transposition of (\ref*{eq:recursive_kdtree_definition}).
+satisfy constraints given by all the median points points in the parent branches
+in levels $0, \dots, k-1$, against all the axes considered up to this level.
+Each surface is the plane containing one of the points
+added to the tree at some point of the algorithm, and divides the volume
+dedicated to the corresponding branch in two halves which shall contain all the
+other points (respectively) in the left and right branch. This is in a certain
+sense a visual transposition of (\ref*{eq:recursive_kdtree_definition}).
 
 However, in order to communicate the structure of the tree
 the visualization shown in Figure \ref{fig:kdtree_branches_progression} may be
@@ -142,7 +141,7 @@ taken into account; then we procede with some words and motivations regarding
 how we represented the dataset in our code and which data structures we used.
 
 \subsection{Algorithm}
-The algorithm is a very simple codification of the definition proposed in
+The following algorithm is a very simple codification of the definition proposed in
 Section \ref{sec:intro}:
 \begin{algorithm}
     \SetAlgoLined
@@ -151,32 +150,32 @@ Section \ref{sec:intro}:
     $i \gets i(\ell)$ like in (\ref{eq:axis_criteria})\; \label{alg:first}
     Find the median point $p_m$ against the axis $i$\;
     Assign the right branch (i.e. $P_2$) to another parallel worker (if available)\;
-    $P = P_1, \ell = \ell + 1$\;
+    $P \gets P_1, \ell \gets \ell + 1$\;
     Go back to Line \ref{alg:first}\;
 \end{algorithm}
 
-The "parallel worker" exists in different instances, which depend on the
-parallel framework used to run the code:
+The exact definition of ``parallel worker'' depends on the parallel framework
+used to compile and run the code:
 \begin{itemize}
-    \item If MPI is used, a parallel worker is one of the processes employed to run the code;
-    \item If OpenMP is used, a parallel worker is an OMP thread.
+    \item MPI $\to$ a parallel worker is one of the MPI processes employed to run the code;
+    \item OpenMP $\to$ a parallel worker is an OMP thread.
 \end{itemize}
 
 It's worth noting that these kind of resources are not unlimited: in case no
 parallel workers are available we procede in a serial way, with two recursive
-calls on the function which we use to generate the \kdtree{} for both the left
+calls to the function which we use to generate the \kdtree{} for both the left
 and right branch. This kind of setting requires a more refined approach if
 MPI is used (OpenMP is quite convenient in this case), and we will now spend
 some words on this.
 
 \subsection{The problem of the ``next'' rank} \label{sec:next_rank}
 Whenever we want to communicate something from an MPI process to another, we
-need to know precisely what we want to send and what's the thread
+need to know precisely what we want to send and what's the process
 (i.e. the rank) we want to communicate with. Since in principle we are going to
 have multiple processes which want to communicate with multiple children
-processes, we needed some way to determine the objective rank of a process
-willing to take on a branch of the two branches originating from the set of
-points processed by the current process. Two ideas emerged, which we present
+processes, we needed some way to determine without conflicts the rank of an
+idle process, namely a process which is able to take on a branch of the two
+branches generated by the current process. Two ideas emerged, which we present
 briefly. The first one is a \emph{master-slave}  approach, i.e. to dedicate a
 process to the sole work of load-balancing the computation between all the
 available parallel workers. A process willing to delegate its right branch to
@@ -189,18 +188,19 @@ another MPI process would have needed to:
 \end{enumerate}
 
 We had the feeling that this kind of setting would have incremented by 2 units
-the number of communications needed to delegate a branch to another process;
-however, the code would have been most likely very elegant and understandable.
-Nonetheless we decided to pursue another approach: an ``hardcoded'' protocol.
-All the parent processes know right off the bat the rank of the
-child process which it needs to communicate with, since it can be computed via
-some very simple arithmetic operations. The code becomes less readable, but
-no-one is going to notice since we decided to hide this kind of complexity
-behind a function.
+the number of communications needed to delegate a branch to another process, and
+would have made an MPI process totally unusable to the actual purpose of growing
+the \kdtree{}; however, the code would have been most likely very elegant and
+understandable. Nonetheless we decided to pursue another approach: an
+``hardcoded'' protocol. A parent process knows right off the bat the rank
+of the child process which is idle and willing to process a branch:
+it can be computed via some very simple arithmetic operations. The code
+becomes less readable, but no-one is going to notice since we decided to hide
+this kind of complexity behind a function.
 
 We briefly describe the protocol we employed in our code with a practical
-example, let's say sat we have 11 MPI processes (0 is the main one), which we
-represent as follows:
+example, let's say sat we have 11 MPI processes (0 being the main process),
+which we represent as follows:
 
 \begin{figure}[H]
     \centering
@@ -305,26 +305,26 @@ employed OpenMP \emph{Tasks} to parallelize the computation. Each time we need
 to assign a branch to another thread we just spawn a new task, and then process
 the remaining branch on this thread. We employed the modifier \texttt{final}
 to disable spawning new tasks when we know that no more threads are available
-since otherwise the newly spawned task would have stallen until a new thread
+since otherwise the newly spawned task would have to wait until a new thread
 became available; also spawning OpenMP tasks without control usually leads to
 worse performance due the incremented orchestration overhead
 \cite{hager2010introduction}. Checking whether new threads are available is done
 almost in the same way we presented above (even though we do not need to compute
 the rank of the next threads). The same mechanism of \texttt{surplus\_workers}
 is employed to overcome the issues which emerges when the number of parallel
-workers is not exactly the sum of consecutive powers of 2 starting from 1.
+workers is not exactly a power of 2.
 
 \subsection{Merging}
 Another difficulty in the usage of MPI is the fact that each process that
-delegated one or more branches to other MPI processes needs to recover somehow
-the portion of tree produced by the child processes. This operation is analogous
-to the \texttt{merge} subroutine which is used in common implementations of
-\emph{Merge-Sort} \cite{cormen2009introduction}. Indeed in our code the function
-which encapsulates this operation is called \texttt{merge\_kd\_trees}. Note that
+delegated one or more branches to other MPI processes needs to recover and
+reconstruct a \kdtree{} starting from the portion of tree produced by the child
+processes. This operation is analogous to the \texttt{merge} subroutine which is
+used in common implementations of \emph{Merge-Sort}
+\cite{cormen2009introduction}. Indeed in our code the function which
+encapsulates this operation is called \texttt{merge\_kd\_trees}. Note that
 \emph{merging} is not required if we use OpenMP, unless we employ some
 particular strategy for writing into the 1D array which represents the
-\kdtree{}, on which we are going to spend some words in the last part of this
-Section.
+\kdtree{} in memory (for instance, see Section \ref{sec:false_sharing}).
 
 Summing up, the abstract algorithm for the growth of \kdtree{} (for which we
 presented a very general pseudocode in Algorithm \ref{alg:parallel_algorithm})
@@ -347,8 +347,8 @@ As you can see we procede in a bottom-up fashion and locate the first fully
 serial level computed by this process (i.e. the first level of the \kdtree{}
 such that no branches have been delegated to another process). Then we procede
 towards the root of the \kdtree{} querying the processes which received some
-branch from \texttt{m\_rank} for the result of their computation. Note that
-$\mathcal{C}_{\texttt{m\_rank}}$ is the list of child processes of
+branch from \texttt{m\_rank} for the result of their computation. We refer as
+$\mathcal{C}_{\texttt{m\_rank}}$ to the list of child processes of
 \texttt{m\_rank}, and $\mathcal{C}_{\texttt{m\_rank}}^{-1}$ means that we
 traverse that list in reverse order (i.e. the last inserted child is the first
 to be queried).
@@ -389,7 +389,7 @@ performance improvement, and are mere design choices. For this reason from now
 on we're going to consider the ``local'' \kdtree{} (i.e. that grown by a single
 parallel worker) as a 1D simple array of ``points''.
 
-Inside this 1D array, $2^\ell$ consecutive points represents a level of the
+Inside this 1D array, $2^\ell$ consecutive points represent a level of the
 tree, where $\ell$ is the depth (i.e. distance from the root) of the level.
 It has been experimentally observed (via the operator \texttt{sizeof}) that when
 the data type is \texttt{float} and each data point has three components, each
@@ -412,7 +412,7 @@ if the 1D array which represents the \kdtree{} is shared among all the parallel
 OMP threads. ``\emph{naive} write mode'' means that each thread writes all the
 points in their proper location inside the 1D array. This means that we could
 virtually observe all the OMP threads writing in the same \kdtree{} level at
-the same time, in different cells of the array though. However if we consider
+the same time, but in different cells of the array. However if we consider
 a cache line to be 128 bytes long, this means that we could have 8 OMP threads
 writing concurrently to that same memory address window, which results in very
 poor performance when we take into account cache coherency
@@ -460,8 +460,8 @@ The situation now looks like this:
 \end{figure}
 
 We keep writing the median point on the first memory address in the subset
-assigned to the thread, and then splitting the remaining memory between the two
-threads that process left and right branches:
+assigned to the thread, and splitting the remaining memory between the two
+threads that process the left and right branches generated:
 \begin{figure}[H]
     \centering
     \begin{tikzpicture}
@@ -583,7 +583,7 @@ The first condition means that we can parallelize in the exact same way
 all the regions of the \kdtree{}, while the latter means that some parts cannot
 be parallelized and therefore need to start the serial growth of the tree one
 level before the others (see \texttt{surplus\_workers} in Section
-\ref{sec:next_rank}). Therefore we write $w(P,N) = \alpha(P)t(N)$ where
+\ref{sec:next_rank}). Therefore we write $w(P,N) = \alpha(P)\phi(P,N)$ where
 $\alpha(P)$ is 0 if $P$ is a power of 2, and 1 otherwise.
 
 Recalling the serial algorithm which we employ to compute the \kdtree{}, the
@@ -611,7 +611,7 @@ parallelizable level to the root, we obtain relation very similar to
 \begin{gather*}
     \texttt{merge}(P,N) = \gamma_2 N \left(2 - \frac{1}{\hat{P}}\right)
 \end{gather*}
-If we use OpenMp there is no merging needed (unless we employ the approach
+If we use OpenMP no merging is needed (unless we employ the approach
 presented in Section \ref{sec:false_sharing}), therefore
 \texttt{merge}$(P,N) \equiv 0$.
 
@@ -640,11 +640,11 @@ we increase the number of parallel workers to a number which is not a power of
 2 (for instance, see Figure \ref{fig:strong_scaling}). This is most likely due
 to the fact that parallel workers are not working equally fast. This means
 that waiting for the computation of the additional (i.e. non-parallelizable)
-level of 5 or 6 workers is practically not the same of waiting for the
-computation of the additional level of 1 worker, since in the former case the
-probability of having a slower worker is much higher. The slower worker is a
-\emph{bottleneck}, therefore increasing the number of workers (even though we
-do not reach the next power of 2) reduces the probability of having a
+level of (for instance) 5 or 6 workers is practically not the same of waiting
+for the computation of the additional level of one worker, since in the former
+case the probability of having a slower worker is much higher. The slower worker
+is a \emph{bottleneck}, therefore increasing the number of workers (even though
+we do not reach the next power of 2) reduces the probability of having a
 bottleneck which stalls the other processes waiting for its portion of the
 dataset.
 
@@ -698,13 +698,13 @@ First of all we briefly discuss the \emph{strong scaling} of our code, namely
 the performance gain given by the introduction of additional parallel workers
 while the problem size stays constant. As you can see in Figure
 \ref{fig:strong_scaling} we observe the behavior we expected after the
-inspection of the simplified model (i.e. steep improvement everytim we add $2^k$
-processors). Also, we observe that the hidden cost of OpenMP is definitely
+inspection of the simplified model (i.e. steep improvement everytime we add
+$2^k$ processors). Also, we observe that the hidden cost of OpenMP is definitely
 not negligible. The slight instability in the OpenMP line could probably mean
 that some OMP threads have been paused and assigned to other tasks.
 
-Note that in this case we observe the effect we forecasted (and explained) in
-the last paragraph of the introduction to Section \ref{sec:performance}, i.e.
+Note that in this case we can observe the effect we forecasted (and explained)
+in the last paragraph of the introduction to Section \ref{sec:performance}, i.e.
 the improvement of performance even if the number of parallel workers is not
 a power of 2.
 
@@ -754,10 +754,10 @@ a power of 2.
     \caption{Weak scaling of the growth of a \kdtree{} for a linearly varying number of elements.}
     \label{fig:weak_scaling}
 \end{figure}
-In order to evaluate the \emph{weak scaling} of our implementation, We generated
-a set $\mathcal{D} = \{d_1.csv, \dots, d_24.csv\}$ comprising 24 datasets having
-varying sizes, such that \texttt{len}$(d_i) = i * 1000000$. With respect to
-\cite[Chapter~5.3.2]{hager2010introduction} we choose $\alpha = 1$. Then we
+In order to evaluate the \emph{weak scaling} of our implementation, we generated
+a set $\mathcal{D} = \{d_1.csv, \dots, d_{24}.csv\}$ comprising 24 datasets
+having varying sizes, such that \texttt{len}$(d_i) = i * 1000000$. With respect
+to \cite[Chapter~5.3.2]{hager2010introduction} we choose $\alpha = 1$. Then we
 measured for a number of parallel workers going from 1 to 24 the time needed to
 grow the \kdtree{}, and computed for each run the \emph{parallel performance}
 $P^i = \frac{\text{Work}}{\text{Time}} = \frac{i * 1000000}{T^i}$. Finally we
@@ -774,7 +774,7 @@ talked about in the final part of the introduction of Section
 we see a slight improvement (after a steep worsening) of weak scaling as the
 number of parallel workers increase, even if its not a power of 2.
 
-\subsection{Other performance experiments}
+\subsection{More measurements}
 \begin{figure}[t!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
@@ -889,7 +889,7 @@ on compile time. In Figure \ref{fig:double_data_type} we show the difference
 in time determined by the data type chosen.
 
 The difference is not so clear in the OpenMP case, but it becomes noticeable
-when MPI is used: this is most likely due to the fact that communication cost
+when MPI is used: this is most likely due to the fact that communication
 becomes much more costly in the latter case.
 
 Finally, we present the results obtained using the approach discussed in Section
@@ -923,6 +923,12 @@ cache line) increases.
 \end{figure}
 
 \section{Conclusions and further developments}
+The full code that this report is based on is available at
+\href{https://github.com/fAndreuzzi/parallel-kd-tree}{this} link (GitHub
+repository), along with a \texttt{README} file and several code examples. I'm
+more than happy to provide more details or clarifications about parts of the
+code which have not been touched in this brief report.
+
 In Section \ref{sec:algorithm} we proposed several technical improvements to
 overcome problems in the frameworks we used to parallelize our code, and
 to improve the usage of the cache hierarchy. Even though those improvements
@@ -932,7 +938,7 @@ This may be due to main reasons:
     \item We overreacted to some issue which in our case is not awfully
     problematic;
     \item The improvement introduced determines a cost in another part of the
-    code which nullifies the performance gain;
+    code which nullifies the performance gain.
 \end{itemize}
 For instance, \emph{false-sharing} might not be a huge problem in our case,
 since we write in the 1D array which represents the \kdtree{} exactly once for
