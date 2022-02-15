@@ -969,6 +969,17 @@ can be found in the branch \texttt{openmp-plus-mpi} of the repository at
 \href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/openmp-plus-mpi}{this}
 link.
 
+A possible way to improve performance when using MPI is replacing the multiple
+\texttt{MPI\_Send}, \texttt{MPI\_Recv} spawned by parent/children processes
+pairs with one single collective call to \texttt{MPI\_Gather}, using the root
+MPI process as the receiver. Then the root process should merge the partial
+results produced by all the children processes, therefore an efficient algorithm
+to reconstruct the \kdtree{} is needed. Also, currently we have multiple
+\texttt{merge} operations which work in parallel bottom-up up to the root level.
+The improvement proposed in this paragraph would remove this kind of
+parallelism, and we should evaluate if the communication saved is worth it in
+order to check if this approach gives any kind of speedup in the end.
+
 \bibliography{bibfile}
 
 \end{document}
