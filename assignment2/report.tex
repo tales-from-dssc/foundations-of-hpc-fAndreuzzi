@@ -658,6 +658,21 @@ we do not reach the next power of 2) reduces the probability of having a
 bottleneck which stalls the other processes waiting for its portion of the
 dataset.
 
+\subsection{Software and hardware employed for the experiments}
+In the following sections we are going to present and discuss some experimental
+measurements in order to verify the fidelity of our theoretical model. The
+measurements have been carried out using a variable number of cores on a single
+\emph{Thin} node on \emph{Orfeo}. The code have been compiled using \emph{gcc}
+9.3.0, the MPI distribution taken into account is OpenMPI 4.0.3.
+
+All the datasets have been generated using a small Python utility which we wrote
+for the purpose. The utility enables the generation of \texttt{.csv} files
+containing a random dataset following a \emph{Normal} distribution, with an
+arbitrary number of data points (row) having an arbitrary number of
+components (columns). In particular for the experiments we fixed the number of
+components to 3, while the number of data points varies according to the
+experiment.
+
 \subsection{\emph{Strong} and \emph{weak} scalability}
 \begin{figure}[t!]
     \centering
@@ -701,10 +716,10 @@ dataset.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-\caption{Strong scaling of the growth of a \kdtree{} ($N = $ 100'000'000).}
+\caption{Strong scalability of the growth of a \kdtree{} ($N = $ 100'000'000).}
 \label{fig:strong_scaling}
 \end{figure}
-First of all we briefly discuss the \emph{strong scaling} of our code, namely
+First of all we briefly discuss the \emph{strong scalability} of our code, namely
 the performance gain given by the introduction of additional parallel workers
 while the problem size stays constant. As you can see in Figure
 \ref{fig:strong_scaling} we observe the behavior we expected after the
@@ -760,13 +775,13 @@ a power of 2.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \caption{Weak scaling of the growth of a \kdtree{} for a linearly varying number of elements.}
+    \caption{Weak scalability of the growth of a \kdtree{} for a linearly varying number of elements.}
     \label{fig:weak_scaling}
 \end{figure}
-In order to evaluate the \emph{weak scaling} of our implementation, we generated
-a set $\mathcal{D} = \{d_1.csv, \dots, d_{24}.csv\}$ comprising 24 datasets
-having varying sizes, such that \texttt{len}$(d_i) = i * 1000000$. With respect
-to \cite[Chapter~5.3.2]{hager2010introduction} we choose $\alpha = 1$. Then we
+In order to evaluate the \emph{weak scalability} of our implementation, we
+generated a set $\mathcal{D} = \{d_1.csv, \dots, d_{24}.csv\}$ comprising 24
+datasets having varying sizes, such that \texttt{len}$(d_i) = i * 1000000$. With
+respect to \cite[Chapter~5.3.2]{hager2010introduction} we choose $\alpha = 1$. Then we
 measured for a number of parallel workers going from 1 to 24 the time needed to
 grow the \kdtree{}, and computed for each run the \emph{parallel performance}
 $P^i = \frac{\text{Work}}{\text{Time}} = \frac{i * 1000000}{T^i}$. Finally we
@@ -779,8 +794,8 @@ are those where the number of parallel workers is a power of 2: in those cases
 the workload is equally distributed among all the workers, which results in a
 local maximum of the weak scalability plot. Moreover we recall the effect we
 talked about in the final part of the introduction of Section
-\ref{sec:performance}, which is observable also in the weak scaling plot: indeed
-we see a slight improvement (after a steep worsening) of weak scaling as the
+\ref{sec:performance}, which is observable also in the weak scalability plot: indeed
+we see a slight improvement (after a steep worsening) of weak scalability as the
 number of parallel workers increase, even if it is not a power of 2.
 
 \subsection{More measurements}
@@ -835,7 +850,7 @@ number of parallel workers increase, even if it is not a power of 2.
     \label{fig:compiler_opt_flags}
 \end{figure}
 
-\begin{figure}[b!]
+\begin{figure}[t!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -878,8 +893,29 @@ number of parallel workers increase, even if it is not a power of 2.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \caption{Time measured for the growth of a \kdtree{} ($N = $ 100'000'000).}
+    \caption{Time taken by the growth of a \kdtree{} ($N = $ 100'000'000).}
     \label{fig:double_data_type}
+\end{figure}
+
+\begin{figure}[b!]
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            xtick={1,2,4,8,16,24},
+            grid=both,
+            ylabel={Seconds},
+            xlabel={$P$},
+            legend cell align={left},
+            ymode=log,
+            title={OpenMP}
+        ]
+        \addplot table[x index=0, y index=1] {plots_data/false_sharing.txt};
+        \addplot table[x index=0, y index=2] {plots_data/false_sharing.txt};\label{fig:fix_falsesharing_line}
+
+        \legend{With \emph{false-sharing}, Fix}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Results for the method presented in Section \ref{sec:false_sharing}.}
 \end{figure}
 
 We comment a little bit the effect of compiler optimization flags on the
@@ -902,32 +938,13 @@ due to the fact that communication becomes much more costly in the latter case.
 Finally, we present the results obtained using the approach discussed in Section
 \ref{sec:false_sharing}, which is aimed to fixing the problem of
 \emph{false-sharing}. Since this is peculiar of the OpenMP case we are not going
-to show any result using MPI. As you can see the ``Fix'' is initially less
-performant than the default version, since as we mentioned earlier the approach
-involves an additional scan of the 1D array which represents the tree in
-memory. However, the approach starts paying the effort as the number of OMP
-threads (i.e. the number of workers which could write concurrently on the same
-cache line) increases.
-
-\begin{figure}[t!]
-    \centering
-    \begin{tikzpicture}[scale=0.8]
-        \begin{axis}[
-            xtick={1,2,4,8,16,24},
-            grid=both,
-            ylabel={Seconds},
-            xlabel={$P$},
-            legend cell align={left},
-            ymode=log,
-        ]
-        \addplot table[x index=0, y index=1] {plots_data/false_sharing.txt};
-        \addplot table[x index=0, y index=2] {plots_data/false_sharing.txt};
-
-        \legend{With \emph{false-sharing}, Fix}
-        \end{axis}
-    \end{tikzpicture}
-    \caption{Testing the method presented in Section \ref{sec:false_sharing} to fix \emph{false-sharing} in OpenMP.}
-\end{figure}
+to show any result using MPI. As you can see the
+(\ref{fig:fix_falsesharing_line}) line (i.e. the version with the fix enabled)
+is initially less performant than the default version, since as we mentioned
+earlier the approach involves an additional scan of the 1D array which
+represents the tree in memory. However, the approach starts paying the effort as
+the number of OMP threads increases, which means that the number of parallel
+workers which could write concurrently on the same cache line increases.
 
 \section{Conclusions and further developments}
 The full code that this report is based on is available at
