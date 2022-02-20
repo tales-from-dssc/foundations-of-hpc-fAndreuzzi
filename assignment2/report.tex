@@ -1006,11 +1006,11 @@ respect to what we expected. A profiler may definitely give the answer, or at
 least point us in the right direction.
 
 We also tried to join the efforts of MPI and OpenMP in order to deliver the
-maximum possible parallelization. Unfortunately we had to pause the development
-due to some technical problems which occurred in the generation of OMP tasks
-(the parallel region spawned the expected number of threads, but all the tasks
-were assigned to \texttt{thread0}). The work produced in this direction
-can be found in the branch \texttt{openmp-plus-mpi} of the repository at
+maximum possible parallelization. Unfortunately the increased complexity in the
+generation of PBS jobfiles needed to run the experiments on \emph{Orfeo} made us
+desist, therefore there are no ``hybryd'' results in this report. However the
+code we wrote is actually available in in the branch \texttt{openmp-plus-mpi} of
+the GitHub repository at
 \href{https://github.com/fAndreuzzi/parallel-kd-tree/tree/openmp-plus-mpi}{this}
 link.
 
