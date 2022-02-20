@@ -21,7 +21,7 @@ structure in response to changes in the dataset (deletion, insertion, \dots).
 
 In this brief report we present and analyze a parallel implementations of
 \kdtree{} which uses two standard frameworks for parallel programming, namely
-OpenMP \cite{dagum1998openmp} (shared memory) and MPI \cite{mpi} (distributed
+OpenMP (shared memory) and MPI (distributed
 memory). Our implementation uses the same approach for parallelization in
 both cases, even though some compiler-level flags can be used to activate
 different code regions whose goal is to fix performance bottlenecks peculiar of
@@ -963,8 +963,9 @@ memory addresses which could reside on the same cache line, which causes
 may solve the problem, but with an additional cost given by the additional scan
 and re-arrangement of the array (which is done serially).
 
-Another factor is most likely NUMA topology. The node we borrowed to run our
-experiments contains multiple sockets, each of which contains multiple cores.
+Another factor is most likely NUMA topology \cite{hager2010introduction}. The
+node we borrowed to run our experiments contains multiple sockets, each of which
+contains multiple cores.
 One of those cores corresponds to \texttt{thread0}, i.e. the main thread, which
 allocates the memory needed to represent the \kdtree{}. Due to the
 \emph{first touch} policy the memory is allocated on \texttt{thread0} which is
