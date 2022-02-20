@@ -8,6 +8,7 @@
 \begin{document}
 \maketitle
 
+\tableofcontents
 \bibliographystyle{plain}
 
 \section{Introduction} \label{sec:intro}
@@ -850,7 +851,7 @@ number of parallel workers increase, even if it is not a power of 2.
     \label{fig:compiler_opt_flags}
 \end{figure}
 
-\begin{figure}[t!]
+\begin{figure}[b!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -897,7 +898,7 @@ number of parallel workers increase, even if it is not a power of 2.
     \label{fig:double_data_type}
 \end{figure}
 
-\begin{figure}[b!]
+\begin{figure}[t!]
     \centering
     \begin{tikzpicture}[scale=0.8]
         \begin{axis}[
@@ -916,6 +917,7 @@ number of parallel workers increase, even if it is not a power of 2.
         \end{axis}
     \end{tikzpicture}
     \caption{Results for the method presented in Section \ref{sec:false_sharing}.}
+    \label{fig:false_sharing}
 \end{figure}
 
 We comment a little bit the effect of compiler optimization flags on the
@@ -935,16 +937,42 @@ in time determined by the data type chosen. The difference is not so clear in
 the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
 due to the fact that communication becomes much more costly in the latter case.
 
-Finally, we present the results obtained using the approach discussed in Section
-\ref{sec:false_sharing}, which is aimed to fixing the problem of
-\emph{false-sharing}. Since this is peculiar of the OpenMP case we are not going
-to show any result using MPI. As you can see the
+Finally in Figure \ref{fig:false_sharing} we present the results obtained using
+the approach discussed in Section \ref{sec:false_sharing}, which is aimed to
+fixing the problem of \emph{false-sharing}. Since this is peculiar of the OpenMP
+case we are not going to show any result using MPI. As you can see the
 (\ref{fig:fix_falsesharing_line}) line (i.e. the version with the fix enabled)
 is initially less performant than the default version, since as we mentioned
 earlier the approach involves an additional scan of the 1D array which
 represents the tree in memory. However, the approach starts paying the effort as
 the number of OMP threads increases, which means that the number of parallel
 workers which could write concurrently on the same cache line increases.
+
+\subsection{Brief discussion of OpenMP results}
+Looking at Figure \ref{fig:strong_scaling} and the other plots we showed in this
+section it is clear that MPI outperforms OpenMP in our experiments. Even the
+improvement discussed in Section \ref{fig:weak_scaling}, which allows us to
+improve slightly the performance of the OpenMP version as the number of threads
+increases, does not guarantee performance matching those of the MPI version. We
+now discuss a little bit some possible motivations.
+
+First of all, as we mentioned earlier, the 1D representation of the tree we
+conceived implies the concurrent modification in different OMP threads of
+memory addresses which could reside on the same cache line, which causes
+\emph{false sharing} and therefore worse performance. The fix we discussed
+may solve the problem, but with an additional cost given by the additional scan
+and re-arrangement of the array (which is done serially).
+
+Another factor is most likely NUMA topology. The node we borrowed to run our
+experiments contains multiple sockets, each of which contains multiple cores.
+One of those cores corresponds to \texttt{thread0}, i.e. the main thread, which
+allocates the memory needed to represent the \kdtree{}. Due to the
+\emph{first touch} policy the memory is allocated on \texttt{thread0} which is
+the first one which uses the addresses. Cores which reside on other sockets
+incur in additional reading and writing costs due to the Non Uniform Memory
+Access. This problem may be solved allocating memory on each child thread to be
+used to grow the tree. Afterwards that memory should be copied to the parent
+buffer in an efficient way.
 
 \section{Conclusions and further developments}
 The full code that this report is based on is available at
