@@ -821,12 +821,12 @@ observed increased cost for big values of $k$ is entirely due to memory
 management issues (like \emph{false sharing}, moving memory, cache coherency,
 message passing).
 
-\begin{figure}[b!]
+\begin{figure}[H]
     \centering
     \makebox[\textwidth][c]{
-    \begin{subfigure}[b]{0.4\textwidth}
+    \begin{subfigure}[b]{0.5\textwidth}
         \centering
-        \begin{tikzpicture}
+        \begin{tikzpicture}[scale=0.75]
             \begin{axis}[
                 xlabel={$P$},
                 ylabel={$k$},
@@ -839,10 +839,10 @@ message passing).
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \hspace{3cm}
-    \begin{subfigure}[b]{0.4\textwidth}
+    \hfill
+    \begin{subfigure}[b]{0.5\textwidth}
         \centering
-        \begin{tikzpicture}
+        \begin{tikzpicture}[scale=0.75]
             \begin{axis}[
                 xlabel={$P$},
                 ylabel={$k$},
@@ -862,19 +862,7 @@ message passing).
 \end{figure}
 
 \subsubsection{Compiler optimzation}
-We comment a little bit the effect of compiler optimization flags on the
-performance of the code. As you can see in Figure \ref{fig:compiler_opt_flags}
-there is a clear improvement when the flag \texttt{-O1} is used, but further
-flags do not enable any particular speedup. In particular
-\texttt{-O3 -march=native} is also somehow less regular than the other
-compilations. The fact that the plots for higher optimization levels are
-almost overlying is probably due to the fact that the most computational
-intensive operatiosn in our algorithm are the calls to
-\texttt{std::nth\_element} and memory operations, which are only slightly
-influenced by the compiler. We might be able to see more distinct lines if we
-consider smaller datasets and a small number of processors.
-
-\begin{figure}[H]
+\begin{figure}[t!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -924,19 +912,20 @@ consider smaller datasets and a small number of processors.
     \caption{Performance determined by compilation with different compiler optimization flags ($N = $ 100'000'000, $k = $ 3).}
     \label{fig:compiler_opt_flags}
 \end{figure}
+We comment a little bit the effect of compiler optimization flags on the
+performance of the code. As you can see in Figure \ref{fig:compiler_opt_flags}
+there is a clear improvement when the flag \texttt{-O1} is used, but further
+flags do not enable any particular speedup. In particular
+\texttt{-O3 -march=native} is also somehow less regular than the other
+compilations. The fact that the plots for higher optimization levels are
+almost overlying is probably due to the fact that the most computational
+intensive operations in our algorithm are the calls to
+\texttt{std::nth\_element} and memory operations, which are only slightly
+influenced by the compiler. We might be able to see more distinct lines if we
+consider smaller datasets and a small number of processors.
 
 \subsubsection{\texttt{double} VS \texttt{float}}
-Another interesting experiment concerns the usage of \texttt{double} instead of
-\texttt{float} values (which have been used until now in the experiments). Using
-\texttt{double} values allows the digital representation of a bigger variety
-of datasets, but this comes at an increased computational cost. We structured
-the code in order to enable the user to choose which data type should be used
-on compile time. In Figure \ref{fig:double_data_type} we show the difference
-in time determined by the data type chosen. The difference is not so clear in
-the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
-due to the fact that communication becomes much more costly in the latter case.
-
-\begin{figure}[t!]
+\begin{figure}[b!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -949,7 +938,6 @@ due to the fact that communication becomes much more costly in the latter case.
                 legend cell align={left},
                 title={MPI},
                 legend style={at={(0.2,0.8)},anchor=west},
-                y label style={at={(axis description cs:0.05,0.5)}}
             ]
             \addplot table[x index=0, y index=1] {plots_data/big_data.txt};
             \addplot table[x index=0, y index=3] {plots_data/big_data.txt};
@@ -958,7 +946,7 @@ due to the fact that communication becomes much more costly in the latter case.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \hspace{1cm}
+    \hfill
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
         \begin{tikzpicture}[scale=0.75]
@@ -970,7 +958,6 @@ due to the fact that communication becomes much more costly in the latter case.
                 legend cell align={left},
                 title={OpenMP},
                 legend style={at={(0.5,0.5)},anchor=west},
-                y label style={at={(axis description cs:0.05,0.5)}}
             ]
             \addplot table[x index=0, y index=2] {plots_data/big_data.txt};
             \addplot table[x index=0, y index=4] {plots_data/big_data.txt};
@@ -982,6 +969,15 @@ due to the fact that communication becomes much more costly in the latter case.
     \caption{Time taken by the growth of a \kdtree{} ($N = $ 100'000'000, $k = 3$).}
     \label{fig:double_data_type}
 \end{figure}
+Another interesting experiment concerns the usage of \texttt{double} instead of
+\texttt{float} values (which have been used until now in the experiments). Using
+\texttt{double} values allows the digital representation of a bigger variety
+of datasets, but this comes at an increased computational cost. We structured
+the code in order to enable the user to choose which data type should be used
+on compile time. In Figure \ref{fig:double_data_type} we show the difference
+in time determined by the data type chosen. The difference is not so clear in
+the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
+due to the fact that communication becomes much more costly in the latter case.
 
 \subsubsection{False sharing}
 Finally in Figure \ref{fig:false_sharing} we present the results obtained using
@@ -994,8 +990,7 @@ earlier the approach involves an additional scan of the 1D array which
 represents the tree in memory. However, the approach starts paying the effort as
 the number of OMP threads increases, which means that the number of parallel
 workers which could write concurrently on the same cache line increases.
-
-\begin{figure}[H]
+\begin{figure}[b!]
     \centering
     \begin{tikzpicture}[scale=0.8]
         \begin{axis}[
@@ -1013,9 +1008,99 @@ workers which could write concurrently on the same cache line increases.
         \legend{With \emph{false-sharing}, Fix}
         \end{axis}
     \end{tikzpicture}
-    \caption{Results obtained applying the method presented in Section \ref{sec:false_sharing} ($N = $ 100'000'000, $k = $ 3).}
+    \caption{Results obtained applying the fix for false sharing presented in Section \ref{sec:false_sharing} ($N = $ 100'000'000, $k = $ 3).}
     \label{fig:false_sharing}
 \end{figure}
+
+\subsubsection{GPU nodes}
+\begin{figure}[t!]
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,4,8,16,32,48},
+                grid=both,
+                ylabel={Seconds},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Time needed to grow the \kdtree{}.},
+                mark size=1pt
+            ]
+            \addplot table[x index=0, y index=1] {plots_data/big_dataset_gpu.txt};
+            \addplot table[x index=0, y index=2] {plots_data/big_dataset_gpu.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{1.5cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.75]
+            \begin{axis}[
+                xtick={1,4,8,16,32,48},
+                grid=both,
+                ylabel={$T(1) / T(P)$},
+                xlabel={$P$},
+                legend cell align={left},
+                title={Parallel speedup (and scalability).},
+                legend style={at={(0.5,0.3)},anchor=west},
+                mark size=1pt
+            ]
+            \addplot table[x index=0, y index=3] {plots_data/big_dataset_gpu.txt};
+            \addplot table[x index=0, y index=4] {plots_data/big_dataset_gpu.txt};
+
+            \legend{MPI, OpenMP}
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+\caption{Strong scalability of the growth of a \kdtree{} on a single GPU node ($N = $ 100'000'000, $k = $ 3).}
+\label{fig:strong_scaling_gpu}
+\end{figure}
+\begin{figure}[b!]
+    \centering
+    \begin{tikzpicture}[scale=0.75]
+        \begin{axis}[
+            xtick={1,2,4,16,24},
+            grid=both,
+            ylabel={$T(P)$},
+            xlabel={$P/2$},
+            legend cell align={left},
+            title={Time needed to grow the \kdtree{} (MPI).},
+            legend style={at={(0.5,0.6)},anchor=west},
+        ]
+        \addlegendimage{empty legend}
+        \addplot table[x index=0, y index=1] {plots_data/mapby_gpu.txt};
+        \addplot table[x index=0, y index=2] {plots_data/mapby_gpu.txt};
+        \addplot table[x index=0, y index=3] {plots_data/mapby_gpu.txt};
+
+        \addlegendentry{\hspace{-.6cm}\texttt{--map-by}}
+        \addlegendentry{core}
+        \addlegendentry{socket}
+        \addlegendentry{node}
+        \end{axis}
+    \end{tikzpicture}
+\caption{Time mesured adding incrementally pairs of processors on 2 GPU nodes, i.e. 2,4,\dots,46,48 ($N = $ 100'000'000, $k = $ 3).}
+\label{fig:mapby_gpu}
+\end{figure}
+In Figure \ref{fig:strong_scaling_gpu} we plot the performance measured on a single
+GPU node going all the way from 1 to 48 CPUs. As you can see the overall
+performance is worse than what we measured on THIN nodes, so much that the
+lowest time measured is still above 20 seconds for the same dataset comprising
+100'000'000 data points which we considered in Figure \ref{fig:strong_scaling}.
+At $P=25$ the MPI version presents a steep descent, exactly when as we go
+beyond the number of processors on a single node. From this point the MPI
+performance becomes approximately a plateau, most likely due to the fact that
+adding new MPI processes does not guarantee any particular gain due to the
+additional communication overhead. In order to clarify the situation we present
+the plot in Figure \ref{fig:mapby_gpu}, where we summarized the behavior of the
+MPI version for different usages of the parameter \texttt{--map-by} of
+\texttt{mpirun}. In this experiment we incrementally add two processors from two
+different GPU nodes for each measurement; then we measure the performance in
+the three cases (\texttt{core}, \texttt{socket}, \texttt{node}). As expected the
+worst performance overall is the one measured for \texttt{node}, since in this
+case we have the maximum distance for the communication between MPI processes.
 
 \subsection{Brief discussion of OpenMP results}
 Looking at Figure \ref{fig:strong_scaling} and the other plots we showed in this
