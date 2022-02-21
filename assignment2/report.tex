@@ -34,7 +34,7 @@ developed, and spend a few words on the implementation. We then procede with
 some considerations on our expectations for the performance, and verify our
 hypothesis against the real data we extracted from a set of run of the code.
 
-\section{\kdtree{}}
+\subsection{\kdtree{}}
 Given a set of k-dimensional points $P = \{p^1, \dots, p^n\}$ such that
 $p^i \in \mathbb{R}^k$ we pick a recursive definition of a \kdtree{}
 \cite{skrodzki2019kd}. The node of the tree associated with the set $P$ is given
@@ -675,7 +675,7 @@ components to 3, while the number of data points varies according to the
 experiment.
 
 \subsection{\emph{Strong} and \emph{weak} scalability}
-\begin{figure}[t!]
+\begin{figure}[b!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -717,7 +717,7 @@ experiment.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-\caption{Strong scalability of the growth of a \kdtree{} ($N = $ 100'000'000).}
+\caption{Strong scalability of the growth of a \kdtree{} ($N = $ 100'000'000, $k = $ 3).}
 \label{fig:strong_scaling}
 \end{figure}
 First of all we briefly discuss the \emph{strong scalability} of our code, namely
@@ -776,7 +776,7 @@ a power of 2.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \caption{Weak scalability of the growth of a \kdtree{} for a linearly varying number of elements.}
+    \caption{Weak scalability of the growth of a \kdtree{} for a linearly varying number of elements ($k = 3$).}
     \label{fig:weak_scaling}
 \end{figure}
 In order to evaluate the \emph{weak scalability} of our implementation, we
@@ -800,7 +800,81 @@ we see a slight improvement (after a steep worsening) of weak scalability as the
 number of parallel workers increase, even if it is not a power of 2.
 
 \subsection{More measurements}
-\begin{figure}[t!]
+In this small section we gather several additional interesting experiments along
+with a brief discussion of the results.
+
+\subsubsection{Dependency on the number $k$ of components}
+In this experiment we observe the dependency of the time measured during
+the growth of a \kdtree{} with a varying number of components $k$ ($N$ is fixed
+to 1000000). We also consider several numbers of parallel workers for both
+the MPI and OpenMP versions. The plot on the left of Figure
+\ref{fig:n_components} shows that the MPI version presents an approximately
+linear dependency of the time needed to grow the tree on the number of
+components in each data point, as the number of MPI processes involved increases
+(we have some unstable measurements when 2 processes are used). The OpenMP
+version by contrast is much more stable when a small number of OMP threads is
+used, and we can observe a less steep linear
+dependency on the number of components $k$. Note that since our parallel
+algorithm is agnostic on the number of components (i.e. in theory we do not
+expect any particular overhead when the number of components increases) the
+observed increased cost for big values of $k$ is entirely due to memory
+management issues (like \emph{false sharing}, moving memory, cache coherency,
+message passing).
+
+\begin{figure}[b!]
+    \centering
+    \makebox[\textwidth][c]{
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                xlabel={$P$},
+                ylabel={$k$},
+                ytick={25,50,75,100},
+                xtick={0,1,2,3,4},
+                xticklabels={1,2,4,8,16},
+                title={MPI}
+            ]
+                \addplot3[surf,mesh/rows=5] file {plots_data/varying_n_components_mpi.txt};
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    \hspace{3cm}
+    \begin{subfigure}[b]{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                xlabel={$P$},
+                ylabel={$k$},
+                ytick={25,50,75,100},
+                xtick={0,1,2,3,4},
+                xticklabels={1,2,4,8,16},
+                title={OpenMP}
+            ]
+                \addplot3[surf,mesh/rows=5] file {plots_data/varying_n_components_omp.txt};
+            \end{axis}
+        \end{tikzpicture}
+    \end{subfigure}
+    }
+    \caption{Performance measured for the growth of \kdtree{} with
+    $N = $ 1000000, varying the number of components $k$.}
+    \label{fig:n_components}
+\end{figure}
+
+\subsubsection{Compiler optimzation}
+We comment a little bit the effect of compiler optimization flags on the
+performance of the code. As you can see in Figure \ref{fig:compiler_opt_flags}
+there is a clear improvement when the flag \texttt{-O1} is used, but further
+flags do not enable any particular speedup. In particular
+\texttt{-O3 -march=native} is also somehow less regular than the other
+compilations. The fact that the plots for higher optimization levels are
+almost overlying is probably due to the fact that the most computational
+intensive operatiosn in our algorithm are the calls to
+\texttt{std::nth\_element} and memory operations, which are only slightly
+influenced by the compiler. We might be able to see more distinct lines if we
+consider smaller datasets and a small number of processors.
+
+\begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -847,11 +921,22 @@ number of parallel workers increase, even if it is not a power of 2.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \caption{Performance determined by compilation with different compiler optimization flags.}
+    \caption{Performance determined by compilation with different compiler optimization flags ($N = $ 100'000'000, $k = $ 3).}
     \label{fig:compiler_opt_flags}
 \end{figure}
 
-\begin{figure}[b!]
+\subsubsection{\texttt{double} VS \texttt{float}}
+Another interesting experiment concerns the usage of \texttt{double} instead of
+\texttt{float} values (which have been used until now in the experiments). Using
+\texttt{double} values allows the digital representation of a bigger variety
+of datasets, but this comes at an increased computational cost. We structured
+the code in order to enable the user to choose which data type should be used
+on compile time. In Figure \ref{fig:double_data_type} we show the difference
+in time determined by the data type chosen. The difference is not so clear in
+the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
+due to the fact that communication becomes much more costly in the latter case.
+
+\begin{figure}[t!]
     \centering
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -894,11 +979,23 @@ number of parallel workers increase, even if it is not a power of 2.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \caption{Time taken by the growth of a \kdtree{} ($N = $ 100'000'000).}
+    \caption{Time taken by the growth of a \kdtree{} ($N = $ 100'000'000, $k = 3$).}
     \label{fig:double_data_type}
 \end{figure}
 
-\begin{figure}[t!]
+\subsubsection{False sharing}
+Finally in Figure \ref{fig:false_sharing} we present the results obtained using
+the approach discussed in Section \ref{sec:false_sharing}, which is aimed to
+fixing the problem of \emph{false-sharing}. Since this is peculiar of the OpenMP
+case we are not going to show any result using MPI. As you can see the
+(\ref{fig:fix_falsesharing_line}) line (i.e. the version with the fix enabled)
+is initially less performant than the default version, since as we mentioned
+earlier the approach involves an additional scan of the 1D array which
+represents the tree in memory. However, the approach starts paying the effort as
+the number of OMP threads increases, which means that the number of parallel
+workers which could write concurrently on the same cache line increases.
+
+\begin{figure}[H]
     \centering
     \begin{tikzpicture}[scale=0.8]
         \begin{axis}[
@@ -916,37 +1013,9 @@ number of parallel workers increase, even if it is not a power of 2.
         \legend{With \emph{false-sharing}, Fix}
         \end{axis}
     \end{tikzpicture}
-    \caption{Results for the method presented in Section \ref{sec:false_sharing}.}
+    \caption{Results obtained applying the method presented in Section \ref{sec:false_sharing} ($N = $ 100'000'000, $k = $ 3).}
     \label{fig:false_sharing}
 \end{figure}
-
-We comment a little bit the effect of compiler optimization flags on the
-performance of the code. As you can see in Figure \ref{fig:compiler_opt_flags}
-there is a clear improvement when the flag \texttt{-O1} is used, but further
-flags do not enable any particular speedup. In particular
-\texttt{-O3 -march=native} is also somehow less regular than the other
-compilations.
-
-Another interesting experiment concerns the usage of \texttt{double} instead of
-\texttt{float} values (which have been used until now in the experiments). Using
-\texttt{double} values allows the digital representation of a bigger variety
-of datasets, but this comes at an increased computational cost. We structured
-the code in order to enable the user to choose which data type should be used
-on compile time. In Figure \ref{fig:double_data_type} we show the difference
-in time determined by the data type chosen. The difference is not so clear in
-the OpenMP case, but it becomes noticeable when MPI is used: this is most likely
-due to the fact that communication becomes much more costly in the latter case.
-
-Finally in Figure \ref{fig:false_sharing} we present the results obtained using
-the approach discussed in Section \ref{sec:false_sharing}, which is aimed to
-fixing the problem of \emph{false-sharing}. Since this is peculiar of the OpenMP
-case we are not going to show any result using MPI. As you can see the
-(\ref{fig:fix_falsesharing_line}) line (i.e. the version with the fix enabled)
-is initially less performant than the default version, since as we mentioned
-earlier the approach involves an additional scan of the 1D array which
-represents the tree in memory. However, the approach starts paying the effort as
-the number of OMP threads increases, which means that the number of parallel
-workers which could write concurrently on the same cache line increases.
 
 \subsection{Brief discussion of OpenMP results}
 Looking at Figure \ref{fig:strong_scaling} and the other plots we showed in this
