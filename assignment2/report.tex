@@ -677,17 +677,17 @@ experiment.
 \subsection{\emph{Strong} and \emph{weak} scalability}
 \begin{figure}[b!]
     \centering
-    \begin{subfigure}[b]{0.4\textwidth}
+    \makebox[\textwidth][c]{
+    \begin{subfigure}[b]{0.55\textwidth}
         \centering
-        \begin{tikzpicture}[scale=0.75]
+        \begin{tikzpicture}[scale=0.7]
             \begin{axis}[
                 xtick={1,2,4,8,16,24},
                 grid=both,
                 ylabel={Seconds},
                 xlabel={$P$},
                 legend cell align={left},
-                title={Time needed to grow the \kdtree{}.},
-                y label style={at={(axis description cs:0.05,0.5)}}
+                title={Time needed to grow the \kdtree{}.}
             ]
             \addplot table[x index=0, y index=1] {plots_data/big_dataset.txt};
             \addplot table[x index=0, y index=2] {plots_data/big_dataset.txt};
@@ -696,10 +696,10 @@ experiment.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
-    \hspace{1cm}
-    \begin{subfigure}[b]{0.4\textwidth}
+    \hfill
+    \begin{subfigure}[b]{0.55\textwidth}
         \centering
-        \begin{tikzpicture}[scale=0.75]
+        \begin{tikzpicture}[scale=0.7]
             \begin{axis}[
                 xtick={1,2,4,8,16,24},
                 grid=both,
@@ -707,8 +707,7 @@ experiment.
                 xlabel={$P$},
                 legend cell align={left},
                 title={Parallel speedup (and scalability).},
-                legend style={at={(0.5,0.3)},anchor=west},
-                y label style={at={(axis description cs:0.08,0.5)}}
+                legend style={at={(0.5,0.3)},anchor=west}
             ]
             \addplot table[x index=0, y index=3] {plots_data/big_dataset.txt};
             \addplot table[x index=0, y index=4] {plots_data/big_dataset.txt};
@@ -717,6 +716,7 @@ experiment.
             \end{axis}
         \end{tikzpicture}
     \end{subfigure}
+    }
 \caption{Strong scalability of the growth of a \kdtree{} ($N = $ 100'000'000, $k = $ 3).}
 \label{fig:strong_scaling}
 \end{figure}
